@@ -1,0 +1,147 @@
+diff --git a/src/opentheory/postbool/Logging.sig b/src/opentheory/postbool/Logging.sig
+index 55b9deb99..fb71fd901 100644
+--- a/src/opentheory/postbool/Logging.sig
++++ b/src/opentheory/postbool/Logging.sig
+@@ -7,6 +7,7 @@ val raw_start_logging : (OTDirective * string) list -> TextIO.outstream -> unit
+ val start_logging : string -> unit
+ val export_thm    : Thm.thm -> Thm.thm
+ val stop_logging  : unit -> unit
++val flush_dictionary : unit -> unit
+
+ type thy_tyop  = OpenTheoryMap.thy_tyop
+ type thy_const = OpenTheoryMap.thy_const
+diff --git a/src/opentheory/postbool/Logging.sml b/src/opentheory/postbool/Logging.sml
+index 0bf744b24..5b185cdcd 100644
+--- a/src/opentheory/postbool/Logging.sml
++++ b/src/opentheory/postbool/Logging.sml
+@@ -57,6 +57,8 @@ val proof_type = let open Thm fun
+ |f (deductAntisym_prf _) = "deductAntisym"
+ |f (compute_prf _) = "compute"
+ |f (save_dep_prf _) = "save_dep"
++|f (Mark_prf _) = "mark"
++|f (Exported_prf _) = "exported"
+ in f end
+
+ datatype log_state =
+@@ -112,7 +114,9 @@ val (log_term, log_thm, log_clear,
+   val (reset_dict,peek_dict,save_dict) = let
+     fun new_dict() = Map.mkDict object_compare
+     val dict = ref (new_dict())
+-    fun reset() = dict := new_dict()
++    fun reset() =
++      (Map.app (fn (_,k) => (log_num k; log_command "remove"; log_command "pop")) (!dict);
++       dict := new_dict(); reset_key())
+     fun peek x = Map.peek(!dict,x)
+     fun save x = case peek x of
+       SOME k => k
+@@ -209,9 +213,21 @@ val (log_term, log_thm, log_clear,
+     in () end
+   end
+
++  (* Literal spines may contain hundreds of thousands of equal prefixes.
++     Ordering every suffix in the structural dictionary is quadratic. Emit
++     spine applications directly; their small heads still share dictionary
++     entries. This changes only serialization, never inference. *)
++  fun literal_spine tm =
++    let val head = Term.rator (Term.rator tm)
++        val {Thy,Name,...} = Term.dest_thy_const head
++    in (Thy="cv" andalso Name="Pair") orelse
++       (Thy="list" andalso Name="CONS") end
++    handle Feedback.HOL_ERR _ => false;
++
+   fun log_term tm = let
+     val ob = OTerm tm
+-  in if saved ob then () else let
++    val spine = literal_spine tm
++  in if not spine andalso saved ob then () else let
+     open Term Feedback
+     val _ = let
+       val {Thy,Name,Ty} = dest_thy_const tm
+@@ -238,7 +254,7 @@ val (log_term, log_thm, log_clear,
+       val _ = log_var tm
+       val _ = log_command "varTerm"
+     in () end
+-    val _ = save_dict ob
++    val _ = if spine then () else ignore (save_dict ob)
+     in () end
+   end
+
+@@ -412,6 +428,8 @@ val (log_term, log_thm, log_clear,
+       val _ = log_command "axiom"
+       in () end
+     | save_dep_prf th => log_thm th
++    | Mark_prf (_,inner) => log_thm inner
++    | Exported_prf _ => raise ERR "log_thm" "external binary proof trace is unavailable"
+     | ASSUME_prf tm => let
+       val _ = log_term tm
+       val _ = log_command "assume"
+@@ -696,7 +714,19 @@ val (log_term, log_thm, log_clear,
+                                   [alpha|->rty,beta|->aty]) Def_tyop_pth
+       val _       = log_thm (proveHyp ra (proveHyp ar pth))
+       in () end
+-    | compute_prf _ => raise ERR "log_thm" "disabled in opentheory kernel";
++    | compute_prf ((args,code_eqs),_) => let
++      (* These are proof requests, not trusted axioms. The strict reader must
++         independently recompute the requested result from checked equations. *)
++      fun export_equation eq =
++        (log_thm eq;
++         log_list log_term (hyp eq);
++         log_term (concl eq);
++         log_command "thm")
++      val _ = app export_equation (map snd (#char_eqns args) @ code_eqs)
++      val _ = log_list log_term (hyp th)
++      val _ = log_term (concl th)
++      val _ = log_command "axiom"
++      in () end;
+     val _ = if !verbosity >= 4 then HOL_MESG("Finish proof for "^(Susp.force ths)) else ()
+     (*
+     val _ = log_comment(pt^")")
+@@ -713,10 +743,13 @@ in (log_term, log_thm, reset_dict,
+     set_tyop_name_handler, reset_tyop_name_handler)
+ end
+
++fun flush_dictionary () = log_clear ();
++
+ val definitions = ref []
++val export_count = ref 0
+
+ fun log_definitions () =
+-  (List.app log_thm (List.rev (!definitions));
++  (List.app (fn th => (log_thm th; log_command "pop")) (List.rev (!definitions));
+    definitions := [])
+
+ fun export_thm th = let
+@@ -732,6 +765,11 @@ fun export_thm th = let
+       val _ = log_list log_term (hyp th)
+       val _ = log_term (concl th)
+       val _ = log_command "thm"
++      (* Exported sequents persist in the reader theorem net. Checkpoint
++         temporary dictionary objects in small batches so shared helpers
++         need not be encoded once per theorem. *)
++      val _ = export_count := !export_count + 1
++      val _ = if !export_count mod 32 = 0 then log_clear () else ()
+       val _ = if v then HOL_MESG("Finish logging\n"^(Susp.force s)^"\n") else ()
+       in () end
+     val _ = delete_proof th
+diff --git a/tools/sequences/kernel b/tools/sequences/kernel
+index 187aaa124..46edf73ae 100644
+--- a/tools/sequences/kernel
++++ b/tools/sequences/kernel
+@@ -19,8 +19,7 @@ src/thm
+ src/tracing
+ (stdknl)src/tracing/no
+ (expk)src/tracing/no
+-[poly](trknl)src/tracing/yes
+-[mosml](trknl)src/tracing/no
++(trknl)src/tracing/no
+ (otknl)src/tracing/no
+ src/postkernel
+ src/postkernel/prooftrace
+@@ -32,6 +31,7 @@ src/opentheory
+ src/bool
+ src/1
+ (otknl)src/opentheory/postbool
++(trknl)src/opentheory/postbool
+ src/proofman
+ !src/proofman/tests
+ [poly]!src/proofman/interactive_tests

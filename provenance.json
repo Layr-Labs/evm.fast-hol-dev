@@ -1,0 +1,20 @@
+{
+  "init-e": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd",
+  "cakeml": "e2b88323e632a5353c142ceef1af4bab77a8f928",
+  "HOL": "d57edec8a4a772f8bcc163fb4edd2126e1696f0f",
+  "ast_sha256": "21925d793b4159c30406a4d48a7402d4a2cdc23e0189201342aa89778d4534ed",
+  "tested_hol": "7f769972f0acf26df39facd83339c05a66d9ff26",
+  "flapjack": "034bb5a1ed0b757082768d5406206bd2f8e31b7c",
+  "input_arena_fix": {
+    "pull_request": "https://github.com/flamingoponderado/init-e/pull/25",
+    "revision": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd",
+    "base_revision": "1ac86616d6af633f734c1b50b2d65bcc267d4ae5",
+    "hol_layout_adjustment": {
+      "bitmap_words": 4614,
+      "bitmap_end": "0xa0029048",
+      "native_entry": "0x80000f60",
+      "native_end": "0x800ddd08",
+      "scope": "The two bitmap-end startup header words advance by eight bytes for the new compiled bitmap table. These header literals differ from pinned upstream Guest/Bookkeeping.lean; no input-length premise is added to Certificate."
+    }
+  }
+}

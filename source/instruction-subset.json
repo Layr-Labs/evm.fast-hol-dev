@@ -1,0 +1,69 @@
+{
+  "ArithI": [
+    "ADDI",
+    "ADDIW",
+    "ANDI",
+    "AUIPC",
+    "LUI",
+    "ORI",
+    "SLTI",
+    "SLTIU",
+    "XORI"
+  ],
+  "ArithR": [
+    "ADD",
+    "AND",
+    "OR",
+    "SLT",
+    "SLTU",
+    "SUB",
+    "XOR"
+  ],
+  "Branch": [
+    "BEQ",
+    "BGE",
+    "BGEU",
+    "BLT",
+    "BLTU",
+    "BNE",
+    "JAL",
+    "JALR"
+  ],
+  "Load": [
+    "LB",
+    "LBU",
+    "LD",
+    "LH",
+    "LHU",
+    "LW",
+    "LWU"
+  ],
+  "MulDiv": [
+    "DIV",
+    "DIVU",
+    "MUL",
+    "MULH",
+    "MULHSU",
+    "MULHU",
+    "REM",
+    "REMU"
+  ],
+  "Shift": [
+    "SLL",
+    "SLLI",
+    "SRA",
+    "SRAI",
+    "SRL",
+    "SRLI"
+  ],
+  "Store": [
+    "SB",
+    "SD",
+    "SH",
+    "SW"
+  ],
+  "System": [
+    "EBREAK",
+    "ECALL"
+  ]
+}
