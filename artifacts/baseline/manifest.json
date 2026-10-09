@@ -1,0 +1,30 @@
+{
+  "kind": "candidate-baseline-rom",
+  "certificate": "proved_in_HOL",
+  "admission": "proved",
+  "native_entry": "0x80000f60",
+  "data_rom": "0x800df000",
+  "data_ram": "0xa0020000",
+  "data_end": "0xa0029048",
+  "construction_theory": "initBaselineRom",
+  "files": {
+    "rom.bin": {
+      "bytes": 950344,
+      "sha256": "6263fafac3969ff15fd93f39fda07581d9fb1ab65afa495575ad1bd7c26767cc"
+    },
+    "bootstrap.bin": {
+      "bytes": 208,
+      "sha256": "b8272e55f910332157d6a9cbf7f46d69a8c97b28c7849df4605aadf2b4f49765"
+    }
+  },
+  "admission_theorem": "initBaselineAdmission.baseline_admitted",
+  "native_end": "0x800ddd08",
+  "native_end_theorem": "initBaselineRom.native_ends_at_fixed_buffer",
+  "certificate_theorem": "initBaselineCertificate.baseline_certificate",
+  "score": "infinity",
+  "article_replay": "verified",
+  "tested_hol": "7f769972f0acf26df39facd83339c05a66d9ff26",
+  "verification_report": "verification.json",
+  "proof_sha256": "cec10f3f74180ba1e338fb17b52d001cb1026817086941b65fea318a1217942b",
+  "init_e_revision": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd"
+}

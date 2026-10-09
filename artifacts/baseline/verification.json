@@ -1,0 +1,68 @@
+{
+  "status": "verified",
+  "run": "pr25-full-verifier-v4",
+  "verification_date": "2026-10-09",
+  "result": {
+    "status": "verified",
+    "K": "infinity",
+    "rom_bytes": 950344,
+    "rom_sha256": "6263fafac3969ff15fd93f39fda07581d9fb1ab65afa495575ad1bd7c26767cc",
+    "proof_sha256": "cec10f3f74180ba1e338fb17b52d001cb1026817086941b65fea318a1217942b"
+  },
+  "resources": {
+    "exit": 0,
+    "wall_seconds": 8727.307953010953,
+    "max_child_rss_kib": 94934632
+  },
+  "replay_process": {
+    "returncode": 0,
+    "signal": null,
+    "signal_number": null,
+    "timed_out": false,
+    "wall_seconds": 8720.372583393008
+  },
+  "limits": {
+    "timeout_seconds": 10800,
+    "address_space_gib": 112,
+    "polyml_heap_mib": 86016
+  },
+  "command": [
+    "python3",
+    "verifier/verify.py",
+    "--local",
+    "/path/to/submission",
+    "--hol",
+    "/path/to/HOL",
+    "--work",
+    "/path/to/fresh-work",
+    "--timeout",
+    "10800",
+    "--memory-gib",
+    "112",
+    "--progress"
+  ],
+  "completion_marker": "VERIFIED\n",
+  "trusted_source_hashes": {
+    "verifier/trusted-files.json": "3df78e2da74d1bdf75f66d371a7bf4dee0a637e188a9b873db10f7cfba56d853",
+    "verifier/strictReplayLib.sml": "84e03a31f4bbe2a843f86855e09126c7403a8e4a5efb8e3ebb438d1604381d9b",
+    "verifier/prepareHeap.sml": "19f21ff5c48838f436b92a1f6aa3c9bb991447baa28a602d72b3f530643bb039",
+    "tools/prepare_verifier.py": "683fc519f806444b3909f46fa023c59a7900f8e207800ed2cd1bd1ec3110fab2",
+    "verifier/verify.py": "c01b504fc518fc89348b18a6d21e27e741d946fe3c810f63a9466b6297998775",
+    "verifier/certificateReplayLib.sml": "77096ff17aaa5a2478af7ae6363c5b98ecc526ab7a111de2a7d74ad8c01e92f9"
+  },
+  "verifier_heap_sha256": "653b75d2efe497fd11f7faf807a9f783a382aac7d61d051d8c1bbb0c8cbcc601",
+  "tested_hol": "7f769972f0acf26df39facd83339c05a66d9ff26",
+  "proof_bytes": 1104635806,
+  "outstanding": [
+    "Agreement with the pinned reduced Lean decoder and machine step is not proved."
+  ],
+  "hol_kernel": "stdknl",
+  "hol_release": "Trindemossen 2",
+  "polyml": {
+    "compiler_version": "5.9.2 Release",
+    "configured_executable": "/usr/bin/poly",
+    "configured_executable_version": "Poly/ML 5.9.2 Release (Git version v5.9.2-311-gd615dad7)",
+    "version_evidence": "HOL executable: PolyML.Compiler.compilerVersion; HOL Systeml.POLY configuration; /usr/bin/poly --version"
+  },
+  "init_e_revision": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd"
+}

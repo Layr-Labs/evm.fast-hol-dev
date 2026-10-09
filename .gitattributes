@@ -1,0 +1,2 @@
+artifacts/*.bin binary
+artifacts/backend.conf binary
