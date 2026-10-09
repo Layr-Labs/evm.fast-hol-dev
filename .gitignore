@@ -24,3 +24,7 @@ logs/
 .submission-baseline-*/
 .verify-baseline-*/
 .export-baseline-pr25/
+
+/work/
+/scripts/score.json
+/scripts/score.tmp
