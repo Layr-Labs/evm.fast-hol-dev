@@ -17,11 +17,12 @@
       "hol_layout_adjustment": {
         "bitmap_words": 4614,
         "bitmap_end": "0xa0029048",
-        "native_entry": "0x80000f60",
-        "native_end": "0x800ddd08",
-        "scope": "The two bitmap-end startup header words advance by eight bytes for the new compiled bitmap table. These header literals differ from pinned upstream Guest/Bookkeeping.lean; no input-length premise is added to Certificate."
+        "native_entry": "0x80000fec",
+        "native_end": "0x800ddd94",
+        "scope": "Startup headers now exactly match original init-e b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2 and the Rocq port: [0xa0020018,0xa0029048,0xa0029048,0x800ddd94,0x800de000]. Native entry advances by140bytes for unchanged HOL native compilation; code buffer620bytes. No input-length premise is added."
       }
-    }
+    },
+    "startup_headers_reference": "b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2"
   },
   "files": {
     "native-riscv.bin": {

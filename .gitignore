@@ -25,6 +25,4 @@ logs/
 .verify-baseline-*/
 .export-baseline-pr25/
 
-/work/
-/scripts/score.json
-/scripts/score.tmp
+.export-baseline-layout-sync/

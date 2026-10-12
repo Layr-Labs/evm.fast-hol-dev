@@ -6,7 +6,7 @@ Libs preamble wordsLib
 
 Definition startupHeaders_def:
   startupHeaders : word64 list =
-    [0xa0020018w; 0xa0029048w; 0xa0029048w; 0x800ddd08w; 0x800de000w]
+    [0xa0020018w; 0xa0029048w; 0xa0029048w; 0x800ddd94w; 0x800de000w]
 End
 Definition ordinaryDomain_def:
   ordinaryDomain =

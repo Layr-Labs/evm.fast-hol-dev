@@ -26,7 +26,7 @@ Proof
 QED
 Theorem baseline_pan_installed:
   target_state_rel restrictedTarget (bootFinalState (baselineInitialAsm input)) ms ==>
-  pan_installed compiledBytes 760 compiledBitmaps 0 compiledConfig.lab_conf.ffi_names
+  pan_installed compiledBytes 620 compiledBitmaps 0 compiledConfig.lab_conf.ffi_names
     (11,13) (compilerMachineConfig baselineSubmission) compiledConfig.lab_conf.shmem_extra ms
     (crep_to_loopProof$wlab_wloc o sourceMemory) ordinaryDomain sharedDomain
 Proof
