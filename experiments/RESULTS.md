@@ -1613,3 +1613,14 @@ and the exact `VERIFIED\n` marker. Run PR25 v4 took 8,727 seconds and peaked at
 and 10,800-second timeout limits. Artifact and proof hashes are recorded in
 `artifacts/baseline/verification.json`. Earlier entries above describe historical
 artifacts and runs. Reduced Lean decoder/step agreement remains explicitly unproved.
+
+## Original layout alignment, 2026-10-12
+
+Fixed source headers match original init-e b3831bc and Rocq exactly. Native entry
+is 0x80000fec, native end 0x800ddd94, code buffer620bytes. Native compiler output
+is unchanged; bootstrap placement and ROM changed. The complete certificate
+build, fresh exports (three memory-limited modules passed sequential24GiB retries),
+31boundary tests, real CLI rejection test and full112GiB independent verification
+passed. The current record is artifacts/baseline/verification.json; earlier layout
+and replay results in this document are historical. Formal Lean agreement remains
+outstanding.

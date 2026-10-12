@@ -1,5 +1,15 @@
 # hol-init-e
 
+## Verified original memory-layout alignment
+
+Startup headers now exactly match original init-e `b3831bc` and the Rocq port.
+The native-end header is `0x800ddd94`; the unchanged 904,616-byte HOL native
+image starts at `0x80000fec`, with a 620-byte code buffer. The complete certificate,
+fresh author exports and full independent verifier passed on 2026-10-12.
+The new ROM SHA256 is `ee6356a9115607e2a02117d981f41dbe6cdb68d3a34e93d8a45e39b198ebfdb9`.
+Tag `r20261009-v` preserves the earlier layout and its historical evidence.
+Formal agreement with the reduced Lean decoder and step remains outstanding.
+
 ## Verified guest input-bound update
 
 The guest guard from init-e PR #25 (commit `afa0071e8`) is imported.

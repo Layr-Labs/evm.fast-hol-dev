@@ -1,25 +1,25 @@
 {
   "status": "verified",
-  "run": "pr25-full-verifier-v4",
-  "verification_date": "2026-10-09",
+  "run": "original-layout-sync",
+  "verification_date": "2026-10-12",
   "result": {
     "status": "verified",
     "K": "infinity",
     "rom_bytes": 950344,
-    "rom_sha256": "6263fafac3969ff15fd93f39fda07581d9fb1ab65afa495575ad1bd7c26767cc",
-    "proof_sha256": "cec10f3f74180ba1e338fb17b52d001cb1026817086941b65fea318a1217942b"
+    "rom_sha256": "ee6356a9115607e2a02117d981f41dbe6cdb68d3a34e93d8a45e39b198ebfdb9",
+    "proof_sha256": "d6bc453b1589c0bf42b509a529a8e086c0f215a25a87624bdb2a629560f29ec8"
   },
   "resources": {
     "exit": 0,
-    "wall_seconds": 8727.307953010953,
-    "max_child_rss_kib": 94934632
+    "wall_seconds": 8692.397242446896,
+    "max_child_rss_kib": 94936692
   },
   "replay_process": {
     "returncode": 0,
     "signal": null,
     "signal_number": null,
     "timed_out": false,
-    "wall_seconds": 8720.372583393008
+    "wall_seconds": 8688.579240891035
   },
   "limits": {
     "timeout_seconds": 10800,
@@ -43,16 +43,16 @@
   ],
   "completion_marker": "VERIFIED\n",
   "trusted_source_hashes": {
-    "verifier/trusted-files.json": "3df78e2da74d1bdf75f66d371a7bf4dee0a637e188a9b873db10f7cfba56d853",
+    "verifier/trusted-files.json": "43936288747bf729f452742f5d1ea62f031c62ca2c1f6c0e9efb8c8f9f1348b0",
     "verifier/strictReplayLib.sml": "84e03a31f4bbe2a843f86855e09126c7403a8e4a5efb8e3ebb438d1604381d9b",
     "verifier/prepareHeap.sml": "19f21ff5c48838f436b92a1f6aa3c9bb991447baa28a602d72b3f530643bb039",
     "tools/prepare_verifier.py": "683fc519f806444b3909f46fa023c59a7900f8e207800ed2cd1bd1ec3110fab2",
     "verifier/verify.py": "c01b504fc518fc89348b18a6d21e27e741d946fe3c810f63a9466b6297998775",
     "verifier/certificateReplayLib.sml": "77096ff17aaa5a2478af7ae6363c5b98ecc526ab7a111de2a7d74ad8c01e92f9"
   },
-  "verifier_heap_sha256": "653b75d2efe497fd11f7faf807a9f783a382aac7d61d051d8c1bbb0c8cbcc601",
+  "verifier_heap_sha256": "e8f0f00224872e446d4f6bca4f45a64ae8f40410c5abd273cab53c06ee214527",
   "tested_hol": "7f769972f0acf26df39facd83339c05a66d9ff26",
-  "proof_bytes": 1104635806,
+  "proof_bytes": 1104669384,
   "outstanding": [
     "Agreement with the pinned reduced Lean decoder and machine step is not proved."
   ],
@@ -64,5 +64,13 @@
     "configured_executable_version": "Poly/ML 5.9.2 Release (Git version v5.9.2-311-gd615dad7)",
     "version_evidence": "HOL executable: PolyML.Compiler.compilerVersion; HOL Systeml.POLY configuration; /usr/bin/poly --version"
   },
-  "init_e_revision": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd"
+  "init_e_revision": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd",
+  "startup_headers_reference": "b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2",
+  "startup_headers": [
+    "0xa0020018",
+    "0xa0029048",
+    "0xa0029048",
+    "0x800ddd94",
+    "0x800de000"
+  ]
 }

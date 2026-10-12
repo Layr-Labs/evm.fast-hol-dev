@@ -28,9 +28,9 @@ val _ = save_closed "initial_data_length"
 val _ = save_closed "baseline_rom_length"
   (EQT_ELIM (cv_eval ``LENGTH baselineRom = 950344``));
 val _ = save_closed "native_fits_before_fixed_buffer"
-  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes <= 0x800ddd08``));
+  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes <= 0x800ddd94``));
 val _ = save_closed "native_ends_at_fixed_buffer"
-  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes = 0x800ddd08``));
+  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes = 0x800ddd94``));
 val _ = save_closed "native_image_in_rom"
   (EQT_ELIM (cv_eval ``TAKE (LENGTH compiledBytes)
     (DROP (baselineNativePc-initialPc) baselineRom) = compiledBytes``));
