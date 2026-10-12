@@ -31,7 +31,7 @@ CHUNK = 1 << 20
 # to remain distinguishable from infinity.
 INFINITY_SCORE = 2**53 - 1
 FINITE_LIMIT = 9_007_199_254_740_985
-# The baseline replay took 8,727 s and peaked at 90.54 GiB RSS under 10,800 s and 112 GiB on the
+# The baseline replay took 8,692 s and peaked at 90.54 GiB RSS under 10,800 s and 112 GiB on the
 # author's host. The verifier applies the timeout to both CPU and wall time; leave room for a
 # slower runner CPU.
 TIMEOUT_SECONDS = 14_400

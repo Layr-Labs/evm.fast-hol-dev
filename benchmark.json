@@ -19,7 +19,7 @@
         "scripts/run.py"
       ],
       "scorePath": "scripts/score.json",
-      "hardware": "Official runs: blacksmith-32vcpu-ubuntu-2404 (128 GB RAM), directly on the runner; the verifier never executes candidate ML. Replay limits: 14,400 s CPU and wall time, 112 GiB address space. The 1.1 GB baseline article took 8,727 s and 90.54 GiB RSS upstream. Cold setup builds Poly/ML, HOL4 and the CakeML compiler theories; its duration is not yet measured (23-hour job timeout).",
+      "hardware": "Official runs: blacksmith-32vcpu-ubuntu-2404 (128 GB RAM), directly on the runner; the verifier never executes candidate ML. Replay limits: 14,400 s CPU and wall time, 112 GiB address space. The 1.1 GB baseline article took 8,692 s and 90.54 GiB RSS upstream. Cold setup builds Poly/ML, HOL4 and the CakeML compiler theories; its duration is not yet measured (23-hour job timeout).",
       "runner": {
         "provider": "github-actions",
         "workflow": "benchmark.yml"

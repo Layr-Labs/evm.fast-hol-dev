@@ -24,7 +24,7 @@
 
 - Yukon archives are limited to 25 MiB compressed, 512 MiB expanded and 10,000 entries. Yukon
   commits the submission to Git, and GitHub rejects files over 100 MB.
-- The baseline article is 1,104,635,806 bytes. An article of that size fits only if it
+- The baseline article is 1,104,669,384 bytes. An article of that size fits only if it
   compresses below 25 MiB, a ratio above 42x; no such ratio has been measured.
 - The article must be self-contained. Replay trusts only HOL's four foundational axioms, the
   literal definitions built from your `rom.bin` and `claim.json`, and the definitions and
@@ -51,7 +51,7 @@
 --memory-gib 112`. The verifier checks the trusted file hashes and the CakeML pin, freezes the
 submitted files, builds HOL literals from the ROM and claim, and replays the article in a fresh
 HOL process with the operator-built heap. It never executes candidate ML. It accepts only a
-closed proof of exactly the fixed Certificate. Upstream's baseline replay took 8,727 seconds and
+closed proof of exactly the fixed Certificate. Upstream's baseline replay took 8,692 seconds and
 peaked at 90.54 GiB RSS.
 
 Run `bash scripts/setup.sh`, then `python3 scripts/run.py` (what `yukon setup --track hol` and
