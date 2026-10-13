@@ -1,0 +1,65 @@
+name: Benchmark
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    # 128 GB host: the baseline replay peaked at 90.54 GiB child RSS under a 112 GiB cap.
+    # The verifier never executes candidate ML and needs no sandbox, so it runs on the host.
+    runs-on: blacksmith-32vcpu-ubuntu-2404
+    # Replay is capped at 240 minutes by scripts/run.py (the baseline took 145 minutes upstream).
+    # A cold setup builds Poly/ML, HOL4 and the CakeML compiler theories with at most 3 workers;
+    # upstream records no total for that build. Stay under the 24-hour job token.
+    timeout-minutes: 1380
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Runner resources
+        run: nproc; free -g; df -h "${GITHUB_WORKSPACE}"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        id: cache
+        with:
+          path: |
+            work/polyml
+            work/polyml.rev
+            work/HOL
+            work/HOL.rev
+            .build
+          key: hol-verifier-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('provenance.json', 'holproject.toml', '.gitmodules', 'challenge/**', 'source/**', 'experiments/**', 'verifier/**', 'tools/**', 'scripts/setup.sh') }}-v1
+      - name: Setup
+        env:
+          # Read-only token for the baseline article if it is a release asset of this repository.
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/setup.sh
+      # Save trusted builds before candidate verification, even if the proof fails.
+      # Only the default branch publishes caches shared with submission branches.
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        if: steps.cache.outputs.cache-hit != 'true' && github.ref_name == github.event.repository.default_branch
+        continue-on-error: true
+        with:
+          path: |
+            work/polyml
+            work/polyml.rev
+            work/HOL
+            work/HOL.rev
+            .build
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Benchmark
+        run: python3 scripts/run.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: benchmark-score
+          path: scripts/score.json
+          if-no-files-found: error
+      - name: Upload verifier logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verifier-logs
+          path: |
+            work/yukon/*/replay/replay.log
+            work/yukon/*/replay/replay-process.json
+          if-no-files-found: ignore

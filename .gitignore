@@ -28,3 +28,7 @@ logs/
 .export-baseline-layout-sync/
 
 .export-baseline-rom-match/
+
+/work/
+/scripts/score.json
+/scripts/score.tmp
