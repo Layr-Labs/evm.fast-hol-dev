@@ -50,7 +50,7 @@
 
 ## Verification
 
-`scripts/run.py` runs `verifier/verify.py --local` unchanged, with `--timeout 14400
+`scripts/run.py` runs `verifier/verify.py --local` unchanged, with `--timeout 21600
 --memory-gib 112`. The verifier checks the trusted file hashes and the CakeML pin, freezes the
 submitted files, builds HOL literals from the ROM and claim, and replays the article in a fresh
 HOL process with the operator-built heap. It never executes candidate ML. It accepts only a
