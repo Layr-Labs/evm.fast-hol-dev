@@ -33,8 +33,8 @@ INFINITY_SCORE = 2**53 - 1
 FINITE_LIMIT = 9_007_199_254_740_985
 # The baseline replay took 8,973 s and peaked at 90.4 GiB RSS under 21,600 s and 112 GiB (an 84 GiB
 # Poly/ML heap) on the author's host. The verifier applies the timeout to both CPU and wall time;
-# leave room for a slower runner CPU.
-TIMEOUT_SECONDS = 14_400
+# match the author's limit so a slower runner CPU still fits.
+TIMEOUT_SECONDS = 21_600
 MEMORY_GIB = 112
 
 

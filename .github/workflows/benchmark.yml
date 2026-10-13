@@ -8,7 +8,7 @@ jobs:
     # 128 GB host: the baseline replay peaked at 90.4 GiB child RSS under a 112 GiB cap.
     # The verifier never executes candidate ML and needs no sandbox, so it runs on the host.
     runs-on: blacksmith-32vcpu-ubuntu-2404
-    # Replay is capped at 240 minutes by scripts/run.py (the baseline took 150 minutes upstream).
+    # Replay is capped at 360 minutes by scripts/run.py (the baseline took 150 minutes upstream).
     # A cold setup builds Poly/ML, HOL4 and the CakeML compiler theories with at most 3 workers;
     # upstream records no total for that build. Stay under the 24-hour job token.
     timeout-minutes: 1380
