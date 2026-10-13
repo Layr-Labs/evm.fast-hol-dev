@@ -12,20 +12,23 @@
   - `rom.bin`: the submitted bytes, at most 128 MiB.
   - `claim.json`: exactly `{"K":123}` or `{"K":"infinity"}`.
   - `certificate.art` (an OpenTheory article) or `certificate.art.xz` (the same article as one
-    xz stream), not both. The harness expands the xz stream, refusing more than 2 GiB, and passes
+    xz stream), not both. The harness expands the xz stream, refusing more than 3 GiB, and passes
     a fresh `rom.bin`, `claim.json` and `certificate.art` to `verifier/verify.py`.
 
   Only the unchanged baseline (`candidate/rom.bin` identical to `artifacts/baseline/rom.bin`,
   claiming infinity) may omit the certificate. It is then checked with the operator-published
-  baseline article, whose hash and size are in `artifacts/baseline/verification.json`.
+  baseline article, whose hash is in `artifacts/baseline/verification.json` and whose size and
+  hash are pinned in `scripts/baseline-article.json`.
 - Changes outside `candidate/` are dropped from Yukon submissions.
 
 ## Size limits
 
 - Yukon archives are limited to 25 MiB compressed, 512 MiB expanded and 10,000 entries. Yukon
   commits the submission to Git, and GitHub rejects files over 100 MB.
-- The baseline article is 1,104,669,384 bytes. An article of that size fits only if it
-  compresses below 25 MiB, a ratio above 42x; no such ratio has been measured.
+- The baseline article is 2,803,497,058 bytes. An article of that size fits only if it
+  compresses below 25 MiB, a ratio above 106x. Upstream measured zstd at 97,104,273 bytes and
+  zip at 98,247,790 bytes, about 29x (`artifacts/baseline/certificate-compression.json`); xz
+  has not been measured.
 - The article must be self-contained. Replay trusts only HOL's four foundational axioms, the
   literal definitions built from your `rom.bin` and `claim.json`, and the definitions and
   theorems of `initProofLibrary` and its ancestors. It cannot cite baseline theories such as
@@ -51,8 +54,8 @@
 --memory-gib 112`. The verifier checks the trusted file hashes and the CakeML pin, freezes the
 submitted files, builds HOL literals from the ROM and claim, and replays the article in a fresh
 HOL process with the operator-built heap. It never executes candidate ML. It accepts only a
-closed proof of exactly the fixed Certificate. Upstream's baseline replay took 8,692 seconds and
-peaked at 90.54 GiB RSS.
+closed proof of exactly the fixed Certificate. Upstream's baseline replay took 8,973 seconds and
+peaked at 90.4 GiB RSS with an 84 GiB Poly/ML heap (`--memory-gib 112`).
 
 Run `bash scripts/setup.sh`, then `python3 scripts/run.py` (what `yukon setup --track hol` and
 `yukon run --track hol` do). Setup needs git, curl, a C/C++ toolchain, GMP and Python 3.11 or

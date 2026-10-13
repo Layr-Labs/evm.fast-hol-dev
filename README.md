@@ -1,22 +1,25 @@
 # hol-init-e
 
-## Verified original memory-layout alignment
+## Verified original ROM match
 
-Startup headers now exactly match original init-e `b3831bc` and the Rocq port.
-The native-end header is `0x800ddd94`; the unchanged 904,616-byte HOL native
-image starts at `0x80000fec`, with a 620-byte code buffer. The complete certificate,
-fresh author exports and full independent verifier passed on 2026-10-12.
-The new ROM SHA256 is `ee6356a9115607e2a02117d981f41dbe6cdb68d3a34e93d8a45e39b198ebfdb9`.
-Tag `r20261009-v` preserves the earlier layout and its historical evidence.
+The HOL baseline ROM now matches original init-e `b3831bc` and Rocq byte for
+byte: 950,344 bytes, SHA256
+`22a1dd0963f12a3492e647b2626101fad2312dfcff813978b8ff1aca9897d7cc`.
+The 904,196-byte native image and all 4,614 bitmap words also match the pinned
+original. HOL uses native entry `0x80001190`, end `0x800ddd94`, and a 620-byte
+code buffer. The fresh full independent verifier passed on 2026-10-13.
+Tag `r20261012v` describes the prior, different ROM and remains historical.
 Formal agreement with the reduced Lean decoder and step remains outstanding.
+See [accepted verifier evidence](artifacts/baseline/verification.json) and
+[byte comparison](artifacts/baseline/original-byte-comparison.json).
 
 ## Verified guest input-bound update
 
 The guest guard from init-e PR #25 (commit `afa0071e8`) is imported.
-Native code has been rebuilt (904,616 bytes, 4,614 bitmap words); HOL boundary
-regressions pass. The full HOL Certificate and fresh submission passed independent
-article replay on 2026-10-09. The verification record below describes this guest;
-tag `r20261008-v` retains the prior guest and its historical evidence.
+Native code has been rebuilt (904,196 bytes, 4,614 bitmap words); HOL boundary
+regressions pass. The full HOL Certificate passed independent article replay on 2026-10-13. Tag
+`r20261009-v` preserves the previous different bytecode and layout as historical
+evidence.
 The new compilation requires the two bitmap-end startup header words to advance
 from `0xa0029040` to `0xa0029048`; this layout adjustment is recorded in
 `provenance.json`. The Certificate has no added input-length premise.
@@ -152,9 +155,10 @@ python3 verifier/verify.py --local /path/to/submission --hol /path/to/HOL \
   --timeout 10800 --memory-gib 112 --progress
 ```
 
-The successful full-baseline verification run (PR25 v4) used the 10,800-second
-and 112 GiB limits above. It took 8,727 seconds (about 2 hours 25 minutes)
-and peaked at 90.54 GiB child RSS. The 600-second/32 GiB defaults are below
+The successful original-ROM-match verification used a 21,600-second timeout,
+112 GiB address-space limit, and 84 GiB Poly/ML heap. It took 8,973 seconds
+(about 2 hours 30 minutes) and peaked at about 90.4 GiB child RSS. The 3 GiB
+article cap accommodates the 2.80 GB replayable certificate. The 600-second/32 GiB defaults are below
 the measured requirements of this baseline proof.
 
 [Checked native artifacts](artifacts/README.md) are included in `artifacts/`.

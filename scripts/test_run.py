@@ -153,5 +153,35 @@ class Harness(unittest.TestCase):
         self.invalid()
 
 
+class BaselinePins(unittest.TestCase):
+    def test_pins_agree_with_upstream_records(self):
+        root = run.baseline.ROOT
+        pins = run.baseline.expected()
+        manifest = json.loads((root / "artifacts" / "baseline" / "manifest.json").read_text())
+        compression = json.loads((root / "artifacts" / "baseline" / "certificate-compression.json").read_text())
+        self.assertEqual(pins["rom_sha256"], manifest["files"]["rom.bin"]["sha256"])
+        self.assertEqual(pins["proof_sha256"], manifest["proof_sha256"])
+        self.assertEqual((pins["proof_bytes"], pins["proof_sha256"]),
+                         (compression["certificate_bytes"], compression["sha256"]))
+        self.assertEqual(run.baseline.sha256(root / "candidate" / "rom.bin"), pins["rom_sha256"])
+        self.assertEqual(json.loads((root / "candidate" / "claim.json").read_text()), {"K": "infinity"})
+
+    def test_article_pin_must_match_verification_record(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "artifacts" / "baseline").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / "artifacts" / "baseline" / "verification.json").write_text(
+                json.dumps({"result": {"rom_sha256": "r" * 64, "proof_sha256": "p" * 64}}))
+            article = root / "scripts" / "baseline-article.json"
+            article.write_text(json.dumps({"url": None, "bytes": 5, "sha256": "p" * 64}))
+            with patch.object(run.baseline, "ROOT", root):
+                self.assertEqual(run.baseline.expected(),
+                                 {"rom_sha256": "r" * 64, "proof_sha256": "p" * 64, "proof_bytes": 5})
+                article.write_text(json.dumps({"url": None, "bytes": 5, "sha256": "q" * 64}))
+                with self.assertRaises(ValueError):
+                    run.baseline.expected()
+
+
 if __name__ == "__main__":
     unittest.main()

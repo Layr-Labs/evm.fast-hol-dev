@@ -5,8 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 tools="${PWD}/work"
 pin() { python3 -c 'import json, sys; print(json.load(open("provenance.json"))[sys.argv[1]])' "$1"; }
-# The tested verifier ran Poly/ML "5.9.2 Release (Git version v5.9.2-311-gd615dad7)", HOL4
-# tested_hol with the standard kernel, and CakeML at the submodule pin (verification.json).
+# The tested verifier ran Poly/ML "5.9.2 Release (Git version v5.9.2-311-gd615dad7)" (README.md),
+# HOL4 tested_hol with the standard kernel, and CakeML at the submodule pin (verification.json).
 polyml_rev=d615dad7975f48d83c7e1873a9beeab1fb71c077
 polyml_describe=v5.9.2-311-gd615dad7
 hol_rev="$(pin tested_hol)"
@@ -69,8 +69,8 @@ then
 fi
 python3 -c 'import sys; sys.path.insert(0, "verifier"); import verify; verify.check_trusted()'
 
-# The baseline article (1.1 GB) fits neither git nor a Yukon archive. It is fetched from the
-# operator URL in scripts/baseline-article.json and checked against upstream's recorded hash.
+# The baseline article (2.8 GB) fits neither git nor a Yukon archive. It is fetched from the
+# operator URL in scripts/baseline-article.json and checked against the size and hash pinned there.
 baseline_url="$(python3 -c 'import json; print(json.load(open("scripts/baseline-article.json"))["url"] or "")')"
 baseline="${tools}/baseline/certificate.art"
 if [[ -z "${baseline_url}" ]]; then

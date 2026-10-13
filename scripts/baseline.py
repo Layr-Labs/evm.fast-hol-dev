@@ -1,4 +1,8 @@
-"""The operator-published baseline article, pinned by upstream's verification record."""
+"""The operator-published baseline article, pinned by upstream's verification record.
+
+Upstream's verification.json records the baseline ROM and article hashes but not the article size,
+so scripts/baseline-article.json pins the size next to the article hash it must agree with.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -12,8 +16,12 @@ ARTICLE = ROOT / "work" / "baseline" / "certificate.art"
 
 def expected() -> dict:
     record = json.loads((ROOT / "artifacts" / "baseline" / "verification.json").read_text())
-    return {"rom_sha256": record["result"]["rom_sha256"], "proof_sha256": record["result"]["proof_sha256"],
-            "proof_bytes": record["proof_bytes"]}
+    article = json.loads((ROOT / "scripts" / "baseline-article.json").read_text())
+    if article["sha256"] != record["result"]["proof_sha256"]:
+        raise ValueError("scripts/baseline-article.json does not pin the article in "
+                         "artifacts/baseline/verification.json")
+    return {"rom_sha256": record["result"]["rom_sha256"], "proof_sha256": article["sha256"],
+            "proof_bytes": article["bytes"]}
 
 
 def sha256(path: Path) -> str:

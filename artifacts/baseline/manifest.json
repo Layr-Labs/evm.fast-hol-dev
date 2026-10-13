@@ -2,7 +2,7 @@
   "kind": "candidate-baseline-rom",
   "certificate": "proved_in_HOL",
   "admission": "proved",
-  "native_entry": "0x80000fec",
+  "native_entry": "0x80001190",
   "data_rom": "0x800df000",
   "data_ram": "0xa0020000",
   "data_end": "0xa0029048",
@@ -10,11 +10,19 @@
   "files": {
     "rom.bin": {
       "bytes": 950344,
-      "sha256": "ee6356a9115607e2a02117d981f41dbe6cdb68d3a34e93d8a45e39b198ebfdb9"
+      "sha256": "22a1dd0963f12a3492e647b2626101fad2312dfcff813978b8ff1aca9897d7cc"
     },
     "bootstrap.bin": {
       "bytes": 208,
-      "sha256": "8d9c68f330fdf53db5704809642c7b78f490b0c4a990b5fa383e5993b9ea7352"
+      "sha256": "1a56754b67c74b4cf0a1710d89e4a2ebfbbbcbab7cf8ca4f1d60fed519f65bde"
+    },
+    "native-riscv.bin": {
+      "bytes": 904196,
+      "sha256": "21e4ad09c0b75c4e7d79ea8945cca480edad6b34410099ffff8760a08158c34e"
+    },
+    "bitmaps.txt": {
+      "bytes": 25671,
+      "sha256": "220b69a84474673eeae091b3e7f4a605a8a4b05fc791100e3a78aba8aace9bbc"
     }
   },
   "admission_theorem": "initBaselineAdmission.baseline_admitted",
@@ -25,7 +33,12 @@
   "article_replay": "verified",
   "tested_hol": "7f769972f0acf26df39facd83339c05a66d9ff26",
   "verification_report": "verification.json",
-  "proof_sha256": "d6bc453b1589c0bf42b509a529a8e086c0f215a25a87624bdb2a629560f29ec8",
+  "proof_sha256": "323ff887dc95c58ff6d8c24aa7e5210f995a433e146530e802e1da2787df6583",
   "init_e_revision": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd",
-  "code_buffer_bytes": 620
+  "code_buffer_bytes": 620,
+  "original_init_e_rom_sha256": "22a1dd0963f12a3492e647b2626101fad2312dfcff813978b8ff1aca9897d7cc",
+  "native_bytes": 904196,
+  "native_sha256": "21e4ad09c0b75c4e7d79ea8945cca480edad6b34410099ffff8760a08158c34e",
+  "bitmap_words": 4614,
+  "bitmap_sha256": "1ff90e1caf1c69e47f3b9ece79a99e74884e9511f14e822bbc6f090bca020277"
 }

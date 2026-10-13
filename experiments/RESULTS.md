@@ -1624,3 +1624,22 @@ build, fresh exports (three memory-limited modules passed sequential24GiB retrie
 passed. The current record is artifacts/baseline/verification.json; earlier layout
 and replay results in this document are historical. Formal Lean agreement remains
 outstanding.
+
+
+## Byte-for-byte original ROM release, 2026-10-13
+
+The checked HOL compiler now consumes the original Pancake backend's allocator
+colourings as untrusted hints; the backend checks them before producing code.
+The result is exactly the pinned original 904196-byte native image (SHA256
+21e4ad09c0b75c4e7d79ea8945cca480edad6b34410099ffff8760a08158c34e) and the
+original 4614 bitmap words. Original ROM padding and zero initial data words are
+represented in initBaselinePadding/initBaselineRom. Native entry0x80001190, end
+0x800ddd94, buffer620. The complete 950344-byte ROM matches SHA256
+22a1dd0963f12a3492e647b2626101fad2312dfcff813978b8ff1aca9897d7cc.
+
+A fresh full independent verifier run passed on 2026-10-13 (kernel exit0, no
+signal or timeout), 8973seconds and observed peak HOL RSS about90.4GiB. Its 2.80GB
+OpenTheory article required raising the bounded article input cap from2GiB to3GiB.
+31 boundary tests and the real CLI negative replay passed. Reduced Lean decoder/step
+agreement remains unproved. The immediately preceding r20261012v verification
+record refers to another ROM and is historical.

@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-13",
+  "certificate_build": "passed",
+  "exact_rom_match": true,
+  "full_independent_verifier": "passed",
+  "kernel_exit": 0,
+  "kernel_signal": null,
+  "timed_out": false,
+  "boundary_tests": {
+    "count": 31,
+    "status": "passed"
+  },
+  "cli_negative_test": {
+    "status": "passed",
+    "output": "PASS: original CLI flags; 904196 frozen bytes; exact-conclusion rejection"
+  },
+  "formal_reduced_Lean_decoder_step_agreement": "outstanding"
+}

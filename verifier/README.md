@@ -25,7 +25,7 @@ still performs preflight unless `--replay` is specified. The original
 ## Frozen literals and the exact statement
 
 The verifier checks trusted-file hashes and the CakeML pin, exact file names,
-regular files without symlinks, bounded sizes (128 MiB ROM, 2 GiB article), and a literal finite/infinite
+regular files without symlinks, bounded sizes (128 MiB ROM, 3 GiB article), and a literal finite/infinite
 score. It reads each candidate file once into an immutable snapshot. Later
 steps use those frozen bytes rather than reopening candidate paths.
 
