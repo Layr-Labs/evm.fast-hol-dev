@@ -1,10 +1,10 @@
 """Score a Yukon submission with the pinned hol-init-e verifier, which runs unchanged.
 
 candidate/ holds rom.bin, claim.json and either certificate.art or certificate.art.xz (one xz
-stream, expanded here under the verifier's 2 GiB article limit). It is copied into a fresh
+stream, expanded here under the verifier's 3 GiB article limit). It is copied into a fresh
 three-file submission for `verifier/verify.py --local`. Only the unchanged baseline ROM with
 the infinity claim may omit the certificate; it then uses the operator-published baseline
-article that scripts/setup.sh fetched and checked against artifacts/baseline/verification.json.
+article that scripts/setup.sh fetched and checked against scripts/baseline-article.json.
 """
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ CHUNK = 1 << 20
 # to remain distinguishable from infinity.
 INFINITY_SCORE = 2**53 - 1
 FINITE_LIMIT = 9_007_199_254_740_985
-# The baseline replay took 8,692 s and peaked at 90.54 GiB RSS under 10,800 s and 112 GiB on the
-# author's host. The verifier applies the timeout to both CPU and wall time; leave room for a
-# slower runner CPU.
+# The baseline replay took 8,973 s and peaked at 90.4 GiB RSS under 21,600 s and 112 GiB (an 84 GiB
+# Poly/ML heap) on the author's host. The verifier applies the timeout to both CPU and wall time;
+# leave room for a slower runner CPU.
 TIMEOUT_SECONDS = 14_400
 MEMORY_GIB = 112
 
