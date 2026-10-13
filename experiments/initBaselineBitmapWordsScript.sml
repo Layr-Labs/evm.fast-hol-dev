@@ -26,7 +26,7 @@ Proof
     (GENLIST (\j. EL (8*(3+i)+j) baselineInitData) 8)` >> conj_tac
   >- (AP_TERM_TAC >> irule GENLIST_CONG >> fs []) >>
   mp_tac (Q.INST
-    [`ws` |-> `[n2w initParams$sourceBase;n2w initParams$stackStart;n2w initParams$ramEnd] ++ compiledBitmaps`,
+    [`ws` |-> `[0w;0w;0w] ++ compiledBitmaps`,
      `i` |-> `3+i`] flat_word_bytes_inverse) >>
   simp [baselineInitData_def,EL_APPEND]
 QED

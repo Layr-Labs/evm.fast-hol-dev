@@ -1,7 +1,7 @@
 (* A candidate ROM assembled from checked compiler and bootstrap results.
    This theory does not yet prove the challenge Certificate. *)
 Theory initBaselineRom
-Ancestors initArtifacts initBootstrap
+Ancestors initArtifacts initBootstrap initBaselinePadding
 Libs preamble cv_transLib wordsLib
 val _ = Feedback.set_trace "TheoryPP.include_html_docs" 0;
 val _ = cv_memLib.use_long_names := true;
@@ -11,13 +11,13 @@ Definition bootWordBytes_def:
 End
 Definition baselineInitData_def:
   baselineInitData = FLAT (MAP bootWordBytes
-    ([n2w sourceBase; n2w stackStart; n2w ramEnd] ++ compiledBitmaps))
+    ([0w; 0w; 0w] ++ compiledBitmaps))
 End
 Definition baselineRom_def:
   baselineRom = bootstrapBytes ++
-    REPLICATE (baselineNativePc - initialPc - LENGTH bootstrapBytes) 0w ++
+    originalPrefixPadding ++
     compiledBytes ++
-    REPLICATE (bootDataRom - baselineNativePc - LENGTH compiledBytes) 0w ++
+    originalSuffixPadding ++
     baselineInitData
 End
 val _ = cv_auto_trans baselineRom_def;

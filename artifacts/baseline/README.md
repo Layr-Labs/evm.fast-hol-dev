@@ -1,7 +1,7 @@
 # Baseline ROM — Certificate proved in HOL
 
 The 950,344-byte ROM combines the 208-byte bootstrap, padding to native entry
-`0x80000fec`, the checked 904,616-byte native compiler output, and initialization
+`0x80001190`, the checked 904,196-byte native compiler output, and initialization
 data at `0x800df000`. The native image ends exactly at `0x800ddd94`, as required
 by the fixed source-memory code-buffer header. The bootstrap copies the data
 into zero-initialized RAM, sets the heap/stack pointers and source headers, and
@@ -21,8 +21,10 @@ The exported ROM matches the checked construction byte for byte.
 
 The full Python verifier accepted the replayable article package with exit 0
 and `status: verified`. The [verification record](verification.json) includes the
-frozen ROM/proof hashes and Infinity score. The layout-sync run took 8,692 seconds and peaked
-at 90.54 GiB child RSS, using `--timeout 10800 --memory-gib 112`.
+frozen ROM/proof hashes and Infinity score. The exact original-ROM-match run took 8,973 seconds and peaked at about
+90.4 GiB child RSS, using `--timeout 21600 --memory-gib 112`. The proof article
+is about 2.80 GB; the verifier accepts articles up to 3 GiB. ZIP and zstd
+compression reduce it to about 98 MB.
 
 This directory remains an artifact archive, not the three-file submission
 package. See [author proof export](../../verifier/README.md#author-proof-export)

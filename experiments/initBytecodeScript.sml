@@ -11,12 +11,10 @@ fun save_closed name th =
   else failwith (name ^ " has assumptions");
 fun report s = print ("initBytecode: " ^ s ^ "\n");
 val _ = report "computing register-allocation graphs";
-val graphs = cv_eval_raw
-  ``FST (riscvBackendDefs$to_livesets_0_riscv
-        (guestConfig,prepared_word,guestNames))``;
-val _ = check_thm graphs;
-val _ = report "generating an untrusted allocation hint";
-val colours = reg_allocComputeLib.get_oracle_raw reg_alloc.Irc (rconc graphs);
+(* Original deterministic allocator proposal; this fast backend checks every
+   supplied colouring in HOL before emitting any native code. *)
+val _ = QUse.use "../tools/allocationHintLib.sml";
+val colours = allocationHintLib.read "../experiments/original-allocation.term";
 val allocation_def = new_definition ("allocation_def",
   mk_eq (mk_var ("allocation",type_of colours),colours));
 val _ = cv_trans_deep_embedding EVAL allocation_def;

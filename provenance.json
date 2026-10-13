@@ -12,10 +12,11 @@
     "hol_layout_adjustment": {
       "bitmap_words": 4614,
       "bitmap_end": "0xa0029048",
-      "native_entry": "0x80000fec",
+      "native_entry": "0x80001190",
       "native_end": "0x800ddd94",
-      "scope": "Startup headers now exactly match original init-e b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2 and the Rocq port: [0xa0020018,0xa0029048,0xa0029048,0x800ddd94,0x800de000]. Native entry advances by140bytes for unchanged HOL native compilation; code buffer620bytes. No input-length premise is added."
+      "scope": "Startup headers and full baseline ROM match original init-e b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2 exactly. Original deterministic allocator colourings are untrusted hints checked in HOL; native904196bytes,bitmaps4614words,buffer620bytes; original padding and zero initial data words retained. No input-size premise added."
     }
   },
-  "startup_headers_reference": "b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2"
+  "startup_headers_reference": "b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2",
+  "baseline_rom_reference": "b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2"
 }
