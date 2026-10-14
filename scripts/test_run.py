@@ -19,6 +19,8 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run  # noqa: E402
 
+REPO = Path(__file__).resolve().parent.parent
+
 ROM = b"\x13\x00\x00\x00"
 ARTICLE = b"1\n2\nnil\n" * 1000
 
@@ -53,13 +55,9 @@ class Harness(unittest.TestCase):
         self.candidate.mkdir()
         (self.candidate / "rom.bin").write_bytes(ROM)
         (self.candidate / "claim.json").write_text('{"K":"infinity"}')
-        self.baseline_article = self.root / "work" / "baseline" / "certificate.art"
-        pins = {"rom_sha256": hashlib.sha256(ROM).hexdigest(),
-                "proof_sha256": hashlib.sha256(ARTICLE).hexdigest(), "proof_bytes": len(ARTICLE)}
+        (self.root / "benchmark.json").write_bytes((REPO / "benchmark.json").read_bytes())
         self.patches = [patch.object(run, "ROOT", self.root), patch.object(run, "CANDIDATE", self.candidate),
-                        patch.object(run, "TOOLS", self.root / "work"),
-                        patch.object(run.baseline, "ARTICLE", self.baseline_article),
-                        patch.object(run.baseline, "expected", lambda: pins)]
+                        patch.object(run, "TOOLS", self.root / "work")]
         for p in self.patches:
             p.start()
             self.addCleanup(p.stop)
@@ -263,53 +261,61 @@ class Harness(unittest.TestCase):
         (self.candidate / "certificate.art").symlink_to(outside)
         self.invalid()
 
-    def test_baseline_uses_published_article(self):
-        self.baseline_article.parent.mkdir(parents=True)
-        self.baseline_article.write_bytes(ARTICLE)
+    def pointer(self, name, data):
+        pointer = {"bytes": len(data), "path": f"candidate/{name}", "sha256": hashlib.sha256(data).hexdigest(),
+                   "slot": "certificate", "yukonLargeFile": 1}
+        (self.candidate / f"{name}.yukon-ref.json").write_bytes(run.large_files.canonical(pointer))
+
+    def test_missing_certificate_rejected(self):
+        self.invalid()
+
+    def test_pointer_with_its_file_is_used_and_not_submitted(self):
+        packed = bytes(zip_bytes([("certificate.art", ARTICLE, None)]))
+        self.write_zip(packed)
+        self.pointer("certificate.art.zip", packed)
         self.run_main(self.report("infinity"))
+        self.assertEqual(set(self.submitted), {"rom.bin", "claim.json", "certificate.art"})
         self.assertEqual(self.submitted["certificate.art"], ARTICLE)
 
-    def test_baseline_fallback_requires_exact_rom_claim_and_article(self):
-        self.invalid()  # article not published
-        self.baseline_article.parent.mkdir(parents=True)
-        self.baseline_article.write_bytes(ARTICLE + b"x")
-        self.invalid()  # article does not match the pinned hash and size
-        self.baseline_article.write_bytes(ARTICLE)
-        (self.candidate / "claim.json").write_text('{"K":5}')
-        self.invalid()
-        (self.candidate / "claim.json").write_text('{"K":"infinity"}')
-        (self.candidate / "rom.bin").write_bytes(ROM + b"\x00")
-        self.invalid()
+    def test_only_pointers_for_declared_slot_paths_are_skipped(self):
+        manifest = json.loads((self.root / "benchmark.json").read_text())
+        manifest["tracks"][0]["largeFiles"][0]["paths"].remove("candidate/certificate.art")
+        (self.root / "benchmark.json").write_text(json.dumps(manifest))
+        (self.candidate / "certificate.art.zip").write_bytes(bytes(zip_bytes([("certificate.art", ARTICLE, None)])))
+        (self.candidate / "certificate.art.yukon-ref.json").write_text("{}")
+        with self.assertRaises(SystemExit) as raised, self.verifier(self.report(1)):
+            run.main()
+        self.assertIn("unexpected entry candidate/certificate.art.yukon-ref.json", str(raised.exception.code))
+
+    def test_pointer_without_its_file_or_with_another_file_rejected(self):
+        packed = bytes(zip_bytes([("certificate.art", ARTICLE, None)]))
+        self.pointer("certificate.art.zip", packed)
+        with self.assertRaises(SystemExit) as raised, self.verifier(self.report(1)):
+            run.main()
+        self.assertIn("yukon setup --track hol", str(raised.exception))
+        self.write_zip(zip_bytes([("certificate.art", ARTICLE + b"x", None)]))
+        self.invalid()  # file differs from its pointer
+        (self.candidate / "certificate.art.zip").unlink()
+        (self.candidate / "certificate.art").write_bytes(ARTICLE)
+        self.invalid()  # a different format than the pointer names
+        (self.candidate / "certificate.art").unlink()
+        self.write_zip(packed)
+        (self.candidate / "certificate.art.zip.yukon-ref.json").write_text('{"bytes": 1}')
+        self.invalid()  # not a canonical pointer
 
 
 class BaselinePins(unittest.TestCase):
-    def test_pins_agree_with_upstream_records(self):
-        root = run.baseline.ROOT
-        pins = run.baseline.expected()
-        manifest = json.loads((root / "artifacts" / "baseline" / "manifest.json").read_text())
-        compression = json.loads((root / "artifacts" / "baseline" / "certificate-compression.json").read_text())
-        self.assertEqual(pins["rom_sha256"], manifest["files"]["rom.bin"]["sha256"])
-        self.assertEqual(pins["proof_sha256"], manifest["proof_sha256"])
-        self.assertEqual((pins["proof_bytes"], pins["proof_sha256"]),
-                         (compression["certificate_bytes"], compression["sha256"]))
-        self.assertEqual(run.baseline.sha256(root / "candidate" / "rom.bin"), pins["rom_sha256"])
-        self.assertEqual(json.loads((root / "candidate" / "claim.json").read_text()), {"K": "infinity"})
-
-    def test_article_pin_must_match_verification_record(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            (root / "artifacts" / "baseline").mkdir(parents=True)
-            (root / "scripts").mkdir()
-            (root / "artifacts" / "baseline" / "verification.json").write_text(
-                json.dumps({"result": {"rom_sha256": "r" * 64, "proof_sha256": "p" * 64}}))
-            article = root / "scripts" / "baseline-article.json"
-            article.write_text(json.dumps({"url": None, "bytes": 5, "sha256": "p" * 64}))
-            with patch.object(run.baseline, "ROOT", root):
-                self.assertEqual(run.baseline.expected(),
-                                 {"rom_sha256": "r" * 64, "proof_sha256": "p" * 64, "proof_bytes": 5})
-                article.write_text(json.dumps({"url": None, "bytes": 5, "sha256": "q" * 64}))
-                with self.assertRaises(ValueError):
-                    run.baseline.expected()
+    def test_baseline_pointer_names_upstream_zip(self):
+        compression = json.loads((REPO / "artifacts" / "baseline" / "certificate-compression.json").read_text())
+        manifest = json.loads((REPO / "artifacts" / "baseline" / "manifest.json").read_text())
+        verification = json.loads((REPO / "artifacts" / "baseline" / "verification.json").read_text())
+        self.assertEqual(run.large_files.pointers(REPO), [{
+            "bytes": compression["zip_bytes"], "path": "candidate/certificate.art.zip",
+            "sha256": compression["zip_sha256"], "slot": "certificate", "yukonLargeFile": 1}])
+        self.assertEqual(compression["sha256"], verification["result"]["proof_sha256"])
+        self.assertEqual(hashlib.sha256((REPO / "candidate" / "rom.bin").read_bytes()).hexdigest(),
+                         manifest["files"]["rom.bin"]["sha256"])
+        self.assertEqual(json.loads((REPO / "candidate" / "claim.json").read_text()), {"K": "infinity"})
 
 
 if __name__ == "__main__":
