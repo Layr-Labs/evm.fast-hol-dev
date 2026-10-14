@@ -53,6 +53,9 @@
 - A score is written only when the verifier reports `verified`; otherwise `scripts/run.py` exits
   nonzero and writes no score. `metrics` records the claim, the verifier's ROM and proof
   SHA-256 and the harness commit.
+- `metrics.verifySeconds` and `metrics.verifyCpuSeconds` are the verifier's wall and CPU time,
+  and `metrics.verifyRunner` describes the runner. They are recorded for information only and
+  do not affect the score yet.
 
 ## Verification
 
