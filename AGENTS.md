@@ -11,9 +11,11 @@
 - Yukon submissions on the `hol` track replace only `candidate/`. It must contain exactly:
   - `rom.bin`: the submitted bytes, at most 128 MiB.
   - `claim.json`: exactly `{"K":123}` or `{"K":"infinity"}`.
-  - `certificate.art` (an OpenTheory article) or `certificate.art.xz` (the same article as one
-    xz stream), not both. The harness expands the xz stream, refusing more than 3 GiB, and passes
-    a fresh `rom.bin`, `claim.json` and `certificate.art` to `verifier/verify.py`.
+  - One of `certificate.art` (an OpenTheory article), `certificate.art.xz` (the same article as
+    one xz stream) or `certificate.art.zip` (a zip holding exactly one stored or deflated file
+    named `certificate.art`, for example `zip -9 certificate.art.zip certificate.art`). The
+    harness expands a compressed form, refusing more than 3 GiB, and passes a fresh `rom.bin`,
+    `claim.json` and `certificate.art` to `verifier/verify.py`.
 
   Only the unchanged baseline (`candidate/rom.bin` identical to `artifacts/baseline/rom.bin`,
   claiming infinity) may omit the certificate. It is then checked with the operator-published

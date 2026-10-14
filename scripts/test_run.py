@@ -2,20 +2,44 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import lzma
 from pathlib import Path
+import stat
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run  # noqa: E402
 
 ROM = b"\x13\x00\x00\x00"
 ARTICLE = b"1\n2\nnil\n" * 1000
+
+
+def zip_bytes(entries, compression=zipfile.ZIP_DEFLATED) -> bytearray:
+    """entries: (name, data, unix mode or None)."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression) as archive:
+        for name, data, mode in entries:
+            info = zipfile.ZipInfo(name)
+            info.compress_type = compression
+            if mode is not None:
+                info.external_attr = mode << 16
+            archive.writestr(info, data)
+    return bytearray(buffer.getvalue())
+
+
+def patch_entry(data: bytearray, fmt: str, local_offset: int, central_offset: int, value) -> bytearray:
+    """Sets one field in the first entry's local header and its central directory record."""
+    struct.pack_into(fmt, data, local_offset, value)
+    struct.pack_into(fmt, data, data.find(b"PK\x01\x02") + central_offset, value)
+    return data
 
 
 class Harness(unittest.TestCase):
@@ -114,6 +138,75 @@ class Harness(unittest.TestCase):
             (self.candidate / "certificate.art.xz").write_bytes(data)
             with patch.object(run.verify, "PROOF_LIMIT", limit):
                 self.invalid()
+
+    def write_zip(self, data):
+        (self.candidate / "certificate.art.zip").write_bytes(bytes(data))
+
+    def test_zip_certificate_is_expanded(self):
+        for compression in (zipfile.ZIP_DEFLATED, zipfile.ZIP_STORED):
+            self.write_zip(zip_bytes([("certificate.art", ARTICLE, stat.S_IFREG | 0o644)], compression))
+            self.run_main(self.report("infinity"))
+            self.assertEqual(self.submitted["certificate.art"], ARTICLE)
+            self.assertEqual(set(self.submitted), {"rom.bin", "claim.json", "certificate.art"})
+
+    def test_zip_must_hold_only_certificate_art(self):
+        for entries in ([("certificate.art", ARTICLE, None), ("extra", b"x", None)],
+                        [("proof.art", ARTICLE, None)],
+                        [("certificate.art/", b"", stat.S_IFDIR | 0o755)],
+                        [("certificate.art", b"/etc/passwd", stat.S_IFLNK | 0o777)],
+                        [("../certificate.art", ARTICLE, None)]):
+            self.write_zip(zip_bytes(entries))
+            self.invalid()
+
+    def test_zip_encryption_and_other_methods_rejected(self):
+        self.write_zip(patch_entry(zip_bytes([("certificate.art", ARTICLE, None)]), "<H", 6, 8, 0x1))
+        self.invalid()
+        for method in (9, 12, 14):  # Deflate64, bzip2, lzma
+            self.write_zip(patch_entry(zip_bytes([("certificate.art", ARTICLE, None)]), "<H", 8, 10, method))
+            self.invalid()
+
+    def test_zip_bombs_rejected(self):
+        packed = zip_bytes([("certificate.art", ARTICLE, None)])
+        self.write_zip(packed)
+        with patch.object(run.verify, "PROOF_LIMIT", len(ARTICLE) - 1):
+            self.invalid()  # declared size over the limit
+        # Declares 10 bytes but inflates to the whole article: output stops at the declared size
+        # and the CRC check fails, and a limit below the real size is never exceeded.
+        self.write_zip(patch_entry(bytearray(packed), "<I", 22, 24, 10))
+        with patch.object(run.verify, "PROOF_LIMIT", 100):
+            self.invalid()
+        self.invalid()
+
+    def test_zip_truncation_and_crc_mismatch_rejected(self):
+        packed = zip_bytes([("certificate.art", ARTICLE, None)])
+        for data in (packed[:-10], packed[:len(packed) // 2], b"not a zip at all"):
+            self.write_zip(data)
+            self.invalid()
+        crc = struct.unpack_from("<I", packed, 14)[0]
+        self.write_zip(patch_entry(bytearray(packed), "<I", 14, 16, crc ^ 1))
+        self.invalid()
+
+    def test_zip_entry_count_checked_before_parsing(self):
+        packed = zip_bytes([("certificate.art", ARTICLE, None)])
+        end = packed.rfind(b"PK\x05\x06")
+        struct.pack_into("<HH", packed, end + 8, 50000, 50000)
+        self.write_zip(packed)
+        with patch.object(run.zipfile, "ZipFile", side_effect=AssertionError("parsed")):
+            self.invalid()
+        many = zip_bytes([(f"f{index}", b"", None) for index in range(65536)], zipfile.ZIP_STORED)
+        self.assertNotEqual(many.rfind(b"PK\x06\x06"), -1)  # zip64 end record
+        with open(self.root / "many.zip", "wb") as handle:
+            handle.write(many)
+        with run.open_regular(self.root / "many.zip") as handle:
+            self.assertEqual(run.zip_entry_count(handle), 65536)
+
+    def test_only_one_certificate_form(self):
+        self.write_zip(zip_bytes([("certificate.art", ARTICLE, None)]))
+        (self.candidate / "certificate.art.xz").write_bytes(lzma.compress(ARTICLE))
+        self.invalid()
+        (self.candidate / "certificate.art.xz").unlink()
+        (self.candidate / "certificate.art").write_bytes(ARTICLE)
+        self.invalid()
 
     def test_bad_candidate_layouts_rejected(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
