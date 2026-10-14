@@ -249,5 +249,20 @@ class Verify(unittest.TestCase):
         self.assertEqual(large_files.canonical(pointer), committed.read_bytes())
 
 
+class Main(unittest.TestCase):
+    def test_failures_carry_the_stable_marker(self):
+        argv, environ = sys.argv, dict(large_files.os.environ)
+        try:
+            sys.argv = ["large_files.py", "fetch"]
+            large_files.os.environ["YUKON_LARGE_FILES"] = "not json"
+            with self.assertRaises(SystemExit) as raised:
+                large_files.main()
+            self.assertEqual(str(raised.exception.code), "yukon-large-file-unavailable: yukon_large_files is not JSON")
+        finally:
+            sys.argv = argv
+            large_files.os.environ.clear()
+            large_files.os.environ.update(environ)
+
+
 if __name__ == "__main__":
     unittest.main()

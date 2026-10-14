@@ -213,7 +213,8 @@ def main() -> None:
     try:
         fetched = fetch(os.environ.get("YUKON_LARGE_FILES", ""))
     except LargeFileError as error:
-        raise SystemExit(f"large-file fetch failed: {error}")
+        # Stable marker: operators search run logs for it to find runs that never got their files.
+        raise SystemExit(f"yukon-large-file-unavailable: {error}")
     print(f"fetched {len(fetched)} large file(s): {', '.join(fetched) or 'none needed'}")
 
 
