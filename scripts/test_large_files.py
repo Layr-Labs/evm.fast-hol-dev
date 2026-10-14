@@ -1,6 +1,7 @@
 """scripts/large_files.py against a local stand-in for GitHub's token service, Yukon and storage."""
 from __future__ import annotations
 
+import errno
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -9,6 +10,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 import urllib.parse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -27,6 +29,7 @@ class Server:
         self.api_responses: list[tuple[int, dict | None, dict]] = []
         self.object_bodies: list[bytes] = []
         self.grant: dict = {}
+        self.tokens = 0
         server = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -45,10 +48,12 @@ class Server:
                 url = urllib.parse.urlsplit(self.path)
                 server.requests.append((url.path + ("?" + url.query if url.query else ""), dict(self.headers)))
                 if url.path == "/token":
-                    self.send(200, json.dumps({"value": "oidc-token"}).encode())
+                    server.tokens += 1
+                    self.send(200, json.dumps({"value": f"oidc-token-{server.tokens}"}).encode())
                 elif url.path.startswith("/api/internal/large-files/"):
                     status, body, headers = server.api_responses.pop(0) if server.api_responses else (200, server.grant, {})
-                    self.send(status, json.dumps(body).encode() if body is not None else b"", headers)
+                    raw = body if isinstance(body, bytes) else json.dumps(body).encode() if body is not None else b""
+                    self.send(status, raw, headers)
                 elif url.path == "/object":
                     body = server.object_bodies.pop(0) if len(server.object_bodies) > 1 else server.object_bodies[0]
                     # Declares the real size, then may send fewer bytes (a dropped connection).
@@ -118,7 +123,7 @@ class Fetch(unittest.TestCase):
         self.assertEqual(token_headers["Authorization"], "bearer runtime-token")
         [(api_path, api_headers)] = self.server.paths("/api/")
         self.assertEqual(api_path, f"/api/internal/large-files/{self.pointer['sha256']}")
-        self.assertEqual(api_headers["Authorization"], "Bearer oidc-token")
+        self.assertEqual(api_headers["Authorization"], "Bearer oidc-token-1")
         [(_, object_headers)] = self.server.paths("/object")
         self.assertNotIn("Authorization", object_headers)
         large_files.verify(self.root)
@@ -162,6 +167,51 @@ class Fetch(unittest.TestCase):
         self.assertEqual(self.fetch(), ["candidate/certificate.art.zip"])
         self.assertEqual(len(self.sleeps), 2)
         self.assertEqual(self.target().read_bytes(), DATA)
+        # Every attempt asks GitHub for a new token, so a retry never presents an expired one.
+        self.assertEqual([headers["Authorization"] for _, headers in self.server.paths("/api/")],
+                         ["Bearer oidc-token-1", "Bearer oidc-token-2", "Bearer oidc-token-3"])
+
+    def test_disk_errors_fail_at_once_with_their_errno(self):
+        real_open = Path.open
+
+        class FullDisk:
+            def __init__(self, handle):
+                self.handle = handle
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                self.handle.close()
+
+            def write(self, data):
+                raise OSError(errno.ENOSPC, "No space left on device")
+
+        def open_full(path, mode="r", *args, **kwargs):
+            handle = real_open(path, mode, *args, **kwargs)
+            return FullDisk(handle) if path.name.endswith(large_files.DOWNLOAD_SUFFIX) else handle
+
+        with patch.object(large_files.Path, "open", open_full), self.assertRaises(large_files.LargeFileError) as raised:
+            self.fetch()
+        self.assertIn("ENOSPC", str(raised.exception))
+        self.assertEqual((self.sleeps, len(self.server.paths("/object"))), ([], 1))
+        self.assert_no_file()
+
+        candidate = self.root / "candidate"
+        candidate.chmod(0o500)
+        self.addCleanup(candidate.chmod, 0o700)
+        if large_files.os.access(candidate, large_files.os.W_OK):
+            self.skipTest("running as a user that ignores directory permissions")
+        with self.assertRaises(large_files.LargeFileError) as raised:
+            self.fetch()
+        self.assertIn("EACCES", str(raised.exception))
+        self.assertEqual(self.sleeps, [])
+
+    def test_a_reply_that_is_not_json_is_a_large_file_error(self):
+        self.server.api_responses = [(200, b"<html>gateway</html>", {})]
+        with self.assertRaises(large_files.LargeFileError) as raised:
+            self.fetch()
+        self.assertIn("not JSON", str(raised.exception))
 
     def test_gives_up_after_the_attempt_limit(self):
         self.server.object_bodies = [DATA[:100]]

@@ -277,6 +277,16 @@ class Harness(unittest.TestCase):
         self.assertEqual(set(self.submitted), {"rom.bin", "claim.json", "certificate.art"})
         self.assertEqual(self.submitted["certificate.art"], ARTICLE)
 
+    def test_only_pointers_for_declared_slot_paths_are_skipped(self):
+        manifest = json.loads((self.root / "benchmark.json").read_text())
+        manifest["tracks"][0]["largeFiles"][0]["paths"].remove("candidate/certificate.art")
+        (self.root / "benchmark.json").write_text(json.dumps(manifest))
+        (self.candidate / "certificate.art.zip").write_bytes(bytes(zip_bytes([("certificate.art", ARTICLE, None)])))
+        (self.candidate / "certificate.art.yukon-ref.json").write_text("{}")
+        with self.assertRaises(SystemExit) as raised, self.verifier(self.report(1)):
+            run.main()
+        self.assertIn("unexpected entry candidate/certificate.art.yukon-ref.json", str(raised.exception.code))
+
     def test_pointer_without_its_file_or_with_another_file_rejected(self):
         packed = bytes(zip_bytes([("certificate.art", ARTICLE, None)]))
         self.pointer("certificate.art.zip", packed)

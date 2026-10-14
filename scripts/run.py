@@ -137,12 +137,14 @@ def expand_zip(source: Path, target: Path, limit: int) -> None:
 
 def materialize(candidate: Path, destination: Path) -> str:
     """Copy candidate/ into a fresh submission directory; return how the article was supplied."""
+    large_files.verify(ROOT)
     entries = {}
-    pointers = {name + large_files.POINTER_SUFFIX for name in CERTIFICATES}
+    pointers = {Path(path).name + large_files.POINTER_SUFFIX
+                for slot in large_files.slots(ROOT) for path in slot["paths"] if (ROOT / path).parent == candidate}
     with os.scandir(candidate) as listing:
         for entry in listing:
             if entry.name in pointers:
-                continue  # checked against its file by large_files.verify
+                continue  # checked against its file by large_files.verify above
             if entry.name not in {"rom.bin", "claim.json", *CERTIFICATES}:
                 raise Invalid(f"unexpected entry candidate/{entry.name}")
             if not entry.is_file(follow_symlinks=False):
@@ -194,7 +196,6 @@ def main() -> None:
     work = TOOLS / "yukon" / uuid.uuid4().hex
     work.mkdir(parents=True)
     try:
-        large_files.verify(ROOT)
         source = materialize(CANDIDATE, work / "submission")
     except (OSError, ValueError, EOFError, lzma.LZMAError, zipfile.BadZipFile, zlib.error,
             large_files.LargeFileError) as exc:

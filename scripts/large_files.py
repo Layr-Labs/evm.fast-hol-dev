@@ -8,12 +8,14 @@ repository or in workflow inputs: Yukon hands out a ten-minute download URL per 
 """
 from __future__ import annotations
 
+import errno
 import hashlib
 import http.client
 import json
 import os
 from pathlib import Path
 import re
+import ssl
 import sys
 import time
 import urllib.error
@@ -40,6 +42,11 @@ class Transient(LargeFileError):
     pass
 
 
+# Failures of the connection itself, retried; any other OSError (a full disk, a read-only
+# checkout) fails at once.
+NETWORK_ERRORS = (urllib.error.URLError, TimeoutError, ConnectionError, ssl.SSLError, http.client.HTTPException)
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     # A redirect would carry the bearer token to another origin; treat it as an error instead.
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -62,13 +69,13 @@ def canonical(pointer: dict) -> bytes:
 
 
 def read_pointer(root: Path, slot: dict, repo_path: str) -> dict | None:
+    where = repo_path + POINTER_SUFFIX
     try:
-        fd = os.open(root / (repo_path + POINTER_SUFFIX), os.O_RDONLY | os.O_NOFOLLOW)
+        fd = os.open(root / where, os.O_RDONLY | os.O_NOFOLLOW)
     except FileNotFoundError:
         return None
     with os.fdopen(fd, "rb") as stream:
         raw = stream.read(POINTER_MAX_BYTES + 1)
-    where = repo_path + POINTER_SUFFIX
     if len(raw) > POINTER_MAX_BYTES:
         raise LargeFileError(f"{where} is larger than {POINTER_MAX_BYTES} bytes")
     try:
@@ -120,16 +127,28 @@ def _request(url: str, headers: dict, timeout: float):
         if error.code >= 500 or error.code in (408, 429):
             raise Transient(f"HTTP {error.code}") from None
         raise LargeFileError(f"HTTP {error.code}") from None
-    except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+    except NETWORK_ERRORS as error:
         raise Transient(type(error).__name__) from None
 
 
 def _json(url: str, headers: dict) -> dict:
     with _request(url, headers, 60) as response:
-        value = json.loads(response.read(64 * 1024))
+        try:
+            raw = response.read(64 * 1024)
+        except NETWORK_ERRORS as error:
+            raise Transient(type(error).__name__) from None
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        raise LargeFileError(f"{urllib.parse.urlsplit(url).path} replied with something that is not JSON") from None
     if not isinstance(value, dict):
         raise LargeFileError("unexpected response")
     return value
+
+
+def _disk_error(path: str, error: OSError) -> LargeFileError:
+    code = errno.errorcode.get(error.errno, str(error.errno))
+    return LargeFileError(f"{path}: cannot write the download ({code}: {error.strerror or error})")
 
 
 def oidc_token(audience: str, environ) -> str:
@@ -146,9 +165,9 @@ def oidc_token(audience: str, environ) -> str:
 
 def download(url: str, target: Path, pointer: dict) -> None:
     partial = target.with_name(target.name + DOWNLOAD_SUFFIX)
-    partial.unlink(missing_ok=True)
     digest, size = hashlib.sha256(), 0
     try:
+        partial.unlink(missing_ok=True)
         with _request(url, {}, 120) as response, partial.open("xb") as out:
             while chunk := response.read(CHUNK):
                 size += len(chunk)
@@ -161,10 +180,15 @@ def download(url: str, target: Path, pointer: dict) -> None:
         if digest.hexdigest() != pointer["sha256"]:
             raise LargeFileError(f"{pointer['path']}: downloaded bytes do not match the pointer's sha256")
         partial.replace(target)
-    except (OSError, http.client.HTTPException) as error:
+    except NETWORK_ERRORS as error:
         raise Transient(f"{pointer['path']}: {type(error).__name__}") from None
+    except OSError as error:
+        raise _disk_error(pointer["path"], error) from None
     finally:
-        partial.unlink(missing_ok=True)
+        try:
+            partial.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def fetch(config_text: str, root: Path = ROOT, environ=os.environ, allowed=ALLOWED_APIS,
@@ -186,10 +210,11 @@ def fetch(config_text: str, root: Path = ROOT, environ=os.environ, allowed=ALLOW
     pending = [p for p in pointers(root) if not file_matches(root / p["path"], p)]
     if not pending:
         return []
-    token = oidc_token(audience, environ)
     for pointer in pending:
         for attempt in range(1, ATTEMPTS + 1):
             try:
+                # GitHub's tokens last minutes and a retry may come much later, so each attempt asks anew.
+                token = oidc_token(audience, environ)
                 grant = _json(f"{api}/api/internal/large-files/{pointer['sha256']}", {"Authorization": f"Bearer {token}"})
                 if grant.get("sha256") != pointer["sha256"] or grant.get("bytes") != pointer["bytes"]:
                     raise LargeFileError(f"{pointer['path']}: Yukon describes a different object")
