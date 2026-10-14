@@ -143,8 +143,10 @@ class Harness(unittest.TestCase):
         (self.candidate / "certificate.art.zip").write_bytes(bytes(data))
 
     def test_zip_certificate_is_expanded(self):
-        for compression in (zipfile.ZIP_DEFLATED, zipfile.ZIP_STORED):
-            self.write_zip(zip_bytes([("certificate.art", ARTICLE, stat.S_IFREG | 0o644)], compression))
+        # zip(1) records S_IFREG|0644, Python's zipfile 0o600 with no type, some tools nothing.
+        for compression, mode in ((zipfile.ZIP_DEFLATED, stat.S_IFREG | 0o644), (zipfile.ZIP_STORED, 0o600),
+                                  (zipfile.ZIP_DEFLATED, 0)):
+            self.write_zip(zip_bytes([("certificate.art", ARTICLE, mode)], compression))
             self.run_main(self.report("infinity"))
             self.assertEqual(self.submitted["certificate.art"], ARTICLE)
             self.assertEqual(set(self.submitted), {"rom.bin", "claim.json", "certificate.art"})
@@ -154,6 +156,7 @@ class Harness(unittest.TestCase):
                         [("proof.art", ARTICLE, None)],
                         [("certificate.art/", b"", stat.S_IFDIR | 0o755)],
                         [("certificate.art", b"/etc/passwd", stat.S_IFLNK | 0o777)],
+                        [("certificate.art", b"", stat.S_IFIFO | 0o644)],
                         [("../certificate.art", ARTICLE, None)]):
             self.write_zip(zip_bytes(entries))
             self.invalid()

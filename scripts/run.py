@@ -118,8 +118,9 @@ def expand_zip(source: Path, target: Path, limit: int) -> None:
                 raise Invalid("certificate.art.zip must not be encrypted")
             if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
                 raise Invalid("certificate.art.zip must be stored or deflated")
-            mode = info.external_attr >> 16
-            if mode and not stat.S_ISREG(mode):
+            # Python's zipfile records permission bits only (0o600); any recorded type must be a file.
+            kind = stat.S_IFMT(info.external_attr >> 16)
+            if kind and kind != stat.S_IFREG:
                 raise Invalid("certificate.art.zip must hold a regular file")
             if info.file_size > limit:
                 raise Invalid(f"certificate.art.zip declares more than {limit} bytes")
