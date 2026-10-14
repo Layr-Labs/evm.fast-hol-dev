@@ -1,20 +1,26 @@
 """Score a Yukon submission with the pinned hol-init-e verifier, which runs unchanged.
 
-candidate/ holds rom.bin, claim.json and either certificate.art or certificate.art.xz (one xz
-stream, expanded here under the verifier's 3 GiB article limit). It is copied into a fresh
+candidate/ holds rom.bin, claim.json and one of certificate.art, certificate.art.xz (one xz
+stream) or certificate.art.zip (one stored or deflated entry named certificate.art); compressed
+forms are expanded here under the verifier's 3 GiB article limit. It is copied into a fresh
 three-file submission for `verifier/verify.py --local`. Only the unchanged baseline ROM with
 the infinity claim may omit the certificate; it then uses the operator-published baseline
 article that scripts/setup.sh fetched and checked against scripts/baseline-article.json.
 """
 from __future__ import annotations
 
+import errno
 import json
 import lzma
 import os
 from pathlib import Path
+import stat
+import struct
 import subprocess
 import sys
 import uuid
+import zipfile
+import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "verifier"))
@@ -24,7 +30,7 @@ import verify  # noqa: E402
 
 CANDIDATE = ROOT / "candidate"
 TOOLS = ROOT / "work"
-CERTIFICATES = ("certificate.art", "certificate.art.xz")
+CERTIFICATES = ("certificate.art", "certificate.art.xz", "certificate.art.zip")
 CHUNK = 1 << 20
 # Yukon scores are doubles and come back with 15 significant digits, so this sentinel reads back as
 # 9007199254740990, as does every value from FINITE_LIMIT up. A finite K must stay below FINITE_LIMIT
@@ -46,14 +52,19 @@ def open_regular(path: Path):
     return os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb")
 
 
+def copy_bounded(src, dst, limit: int, label: str) -> None:
+    """Copies the stream in chunks, failing before more than limit bytes are written."""
+    size = 0
+    while chunk := src.read(CHUNK):
+        size += len(chunk)
+        if size > limit:
+            raise Invalid(f"{label} exceeds {limit} bytes")
+        dst.write(chunk)
+
+
 def copy(source: Path, target: Path, limit: int) -> None:
     with open_regular(source) as src, target.open("xb") as dst:
-        size = 0
-        while chunk := src.read(CHUNK):
-            size += len(chunk)
-            if size > limit:
-                raise Invalid(f"{source.name} exceeds {limit} bytes")
-            dst.write(chunk)
+        copy_bounded(src, dst, limit, source.name)
 
 
 def expand_xz(source: Path, target: Path, limit: int) -> None:
@@ -75,6 +86,55 @@ def expand_xz(source: Path, target: Path, limit: int) -> None:
             raise Invalid("certificate.art.xz has data after its xz stream")
 
 
+def zip_entry_count(src) -> int:
+    """Entries the end of central directory declares, read before zipfile parses the directory."""
+    size = src.seek(0, os.SEEK_END)
+    tail_size = min(size, 65535 + 22)
+    src.seek(size - tail_size)
+    tail = src.read(tail_size)
+    end = tail.rfind(b"PK\x05\x06")
+    if end < 0 or len(tail) - end < 22:
+        raise Invalid("certificate.art.zip is not a zip archive")
+    entries = struct.unpack_from("<H", tail, end + 10)[0]
+    if entries != 0xFFFF:
+        return entries
+    locator = end - 20
+    if locator < 0 or tail[locator:locator + 4] != b"PK\x06\x07":
+        raise Invalid("certificate.art.zip has a damaged zip64 end record")
+    src.seek(struct.unpack_from("<Q", tail, locator + 8)[0])
+    record = src.read(56)
+    if len(record) != 56 or record[:4] != b"PK\x06\x06":
+        raise Invalid("certificate.art.zip has a damaged zip64 end record")
+    return struct.unpack_from("<Q", record, 32)[0]
+
+
+def expand_zip(source: Path, target: Path, limit: int) -> None:
+    with open_regular(source) as src:
+        if zip_entry_count(src) != 1:
+            raise Invalid("certificate.art.zip must contain exactly one entry")
+        src.seek(0)
+        with zipfile.ZipFile(src) as archive:
+            entries = archive.infolist()
+            if len(entries) != 1:
+                raise Invalid("certificate.art.zip must contain exactly one entry")
+            info = entries[0]
+            if info.filename != "certificate.art" or info.is_dir():
+                raise Invalid("certificate.art.zip must contain only a file named certificate.art")
+            if info.flag_bits & 0x1:
+                raise Invalid("certificate.art.zip must not be encrypted")
+            if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+                raise Invalid("certificate.art.zip must be stored or deflated")
+            # Python's zipfile records permission bits only (0o600); any recorded type must be a file.
+            kind = stat.S_IFMT(info.external_attr >> 16)
+            if kind and kind != stat.S_IFREG:
+                raise Invalid("certificate.art.zip must hold a regular file")
+            if info.file_size > limit:
+                raise Invalid(f"certificate.art.zip declares more than {limit} bytes")
+            # The declared size is not trusted: output is counted, and zipfile checks CRC-32 at the end.
+            with archive.open(info) as stream, target.open("xb") as dst:
+                copy_bounded(stream, dst, limit, "certificate.art expanded from certificate.art.zip")
+
+
 def materialize(candidate: Path, destination: Path) -> str:
     """Copy candidate/ into a fresh submission directory; return how the article was supplied."""
     entries = {}
@@ -87,8 +147,8 @@ def materialize(candidate: Path, destination: Path) -> str:
             entries[entry.name] = Path(entry.path)
     if missing := {"rom.bin", "claim.json"} - entries.keys():
         raise Invalid(f"candidate/ is missing {', '.join(sorted(missing))}")
-    if all(name in entries for name in CERTIFICATES):
-        raise Invalid("supply certificate.art or certificate.art.xz, not both")
+    if sum(name in entries for name in CERTIFICATES) > 1:
+        raise Invalid("supply only one of certificate.art, certificate.art.xz and certificate.art.zip")
     destination.mkdir(mode=0o700)
     copy(entries["rom.bin"], destination / "rom.bin", verify.ROM_LIMIT)
     copy(entries["claim.json"], destination / "claim.json", 65536)
@@ -99,6 +159,9 @@ def materialize(candidate: Path, destination: Path) -> str:
     if "certificate.art.xz" in entries:
         expand_xz(entries["certificate.art.xz"], article, verify.PROOF_LIMIT)
         return "xz"
+    if "certificate.art.zip" in entries:
+        expand_zip(entries["certificate.art.zip"], article, verify.PROOF_LIMIT)
+        return "zip"
     claim = json.loads((destination / "claim.json").read_bytes())
     if baseline.sha256(destination / "rom.bin") != baseline.expected()["rom_sha256"] or claim != {"K": "infinity"}:
         raise Invalid("candidate/ has no certificate; only the unchanged baseline ROM claiming infinity may omit it")
@@ -136,7 +199,9 @@ def main() -> None:
     work.mkdir(parents=True)
     try:
         source = materialize(CANDIDATE, work / "submission")
-    except (OSError, ValueError, lzma.LZMAError) as exc:
+    except (OSError, ValueError, EOFError, lzma.LZMAError, zipfile.BadZipFile, zlib.error) as exc:
+        if isinstance(exc, OSError) and exc.errno in (errno.ENOSPC, errno.EDQUOT):
+            raise SystemExit(f"Runner ran out of disk space preparing the candidate: {exc}")
         raise SystemExit(f"Invalid candidate: {exc}")
     print(f"Certificate supplied as: {source}", file=sys.stderr)
     report = run_verifier(work / "submission", work / "replay")
