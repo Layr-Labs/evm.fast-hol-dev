@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Trusted setup: pinned Poly/ML and HOL4, the pinned CakeML submodule, the fixed verifier heap,
-# and the operator-published baseline article. No file under candidate/ is read here.
+# Trusted setup: pinned Poly/ML and HOL4, the pinned CakeML submodule and the fixed verifier heap.
+# No file under candidate/ is read here; large candidate files are fetched by scripts/large_files.py.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 tools="${PWD}/work"
@@ -68,28 +68,3 @@ then
   python3 tools/prepare_verifier.py --hol "${tools}/HOL"
 fi
 python3 -c 'import sys; sys.path.insert(0, "verifier"); import verify; verify.check_trusted()'
-
-# The baseline article (2.8 GB) fits neither git nor a Yukon archive. It is fetched from the
-# operator URL in scripts/baseline-article.json and checked against the size and hash pinned there.
-baseline_url="$(python3 -c 'import json; print(json.load(open("scripts/baseline-article.json"))["url"] or "")')"
-baseline="${tools}/baseline/certificate.art"
-if [[ -z "${baseline_url}" ]]; then
-  echo 'scripts/baseline-article.json has no URL; the baseline candidate cannot be verified.' >&2
-elif ! python3 scripts/baseline.py check "${baseline}" 2>/dev/null; then
-  rm -rf "${tools}/baseline"
-  mkdir -p "${tools}/baseline"
-  headers=()
-  if [[ "${baseline_url}" == https://api.github.com/* && -n "${GH_TOKEN:-}" ]]; then
-    # Release assets of a non-public repository; curl drops these on the cross-host redirect.
-    headers=(-H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/octet-stream')
-  fi
-  curl --fail --location --retry 3 --proto '=https' ${headers[@]+"${headers[@]}"} \
-    -o "${tools}/baseline/download" "${baseline_url}"
-  if [[ "$(head -c 6 "${tools}/baseline/download" | od -An -tx1 | tr -d ' \n')" == fd377a585a00 ]]; then
-    xz -dc "${tools}/baseline/download" > "${baseline}"
-    rm "${tools}/baseline/download"
-  else
-    mv "${tools}/baseline/download" "${baseline}"
-  fi
-  python3 scripts/baseline.py check "${baseline}"
-fi

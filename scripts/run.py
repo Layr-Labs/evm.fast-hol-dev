@@ -3,9 +3,9 @@
 candidate/ holds rom.bin, claim.json and one of certificate.art, certificate.art.xz (one xz
 stream) or certificate.art.zip (one stored or deflated entry named certificate.art); compressed
 forms are expanded here under the verifier's 3 GiB article limit. It is copied into a fresh
-three-file submission for `verifier/verify.py --local`. Only the unchanged baseline ROM with
-the infinity claim may omit the certificate; it then uses the operator-published baseline
-article that scripts/setup.sh fetched and checked against scripts/baseline-article.json.
+three-file submission for `verifier/verify.py --local`. Yukon keeps the certificate out of Git:
+the branch carries `<name>.yukon-ref.json`, the workflow fetches the file it names
+(scripts/large_files.py), and the file must match its pointer before anything is copied.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ import zlib
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "verifier"))
 sys.path.insert(0, str(ROOT / "scripts"))
-import baseline  # noqa: E402
+import large_files  # noqa: E402
 import verify  # noqa: E402
 
 CANDIDATE = ROOT / "candidate"
@@ -138,8 +138,11 @@ def expand_zip(source: Path, target: Path, limit: int) -> None:
 def materialize(candidate: Path, destination: Path) -> str:
     """Copy candidate/ into a fresh submission directory; return how the article was supplied."""
     entries = {}
+    pointers = {name + large_files.POINTER_SUFFIX for name in CERTIFICATES}
     with os.scandir(candidate) as listing:
         for entry in listing:
+            if entry.name in pointers:
+                continue  # checked against its file by large_files.verify
             if entry.name not in {"rom.bin", "claim.json", *CERTIFICATES}:
                 raise Invalid(f"unexpected entry candidate/{entry.name}")
             if not entry.is_file(follow_symlinks=False):
@@ -162,14 +165,7 @@ def materialize(candidate: Path, destination: Path) -> str:
     if "certificate.art.zip" in entries:
         expand_zip(entries["certificate.art.zip"], article, verify.PROOF_LIMIT)
         return "zip"
-    claim = json.loads((destination / "claim.json").read_bytes())
-    if baseline.sha256(destination / "rom.bin") != baseline.expected()["rom_sha256"] or claim != {"K": "infinity"}:
-        raise Invalid("candidate/ has no certificate; only the unchanged baseline ROM claiming infinity may omit it")
-    if not baseline.article_matches(baseline.ARTICLE):
-        raise Invalid("the baseline article is unavailable: scripts/setup.sh fetches it from the URL in "
-                      "scripts/baseline-article.json")
-    copy(baseline.ARTICLE, article, verify.PROOF_LIMIT)
-    return "baseline"
+    raise Invalid("candidate/ has no certificate.art, certificate.art.xz or certificate.art.zip")
 
 
 def run_verifier(submission: Path, work: Path) -> dict:
@@ -198,8 +194,10 @@ def main() -> None:
     work = TOOLS / "yukon" / uuid.uuid4().hex
     work.mkdir(parents=True)
     try:
+        large_files.verify(ROOT)
         source = materialize(CANDIDATE, work / "submission")
-    except (OSError, ValueError, EOFError, lzma.LZMAError, zipfile.BadZipFile, zlib.error) as exc:
+    except (OSError, ValueError, EOFError, lzma.LZMAError, zipfile.BadZipFile, zlib.error,
+            large_files.LargeFileError) as exc:
         if isinstance(exc, OSError) and exc.errno in (errno.ENOSPC, errno.EDQUOT):
             raise SystemExit(f"Runner ran out of disk space preparing the candidate: {exc}")
         raise SystemExit(f"Invalid candidate: {exc}")
