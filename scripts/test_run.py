@@ -1,9 +1,11 @@
 """Score mapping and fail-closed checks for scripts/run.py, with the verifier mocked."""
 from __future__ import annotations
 
+import contextlib
 import errno
 import hashlib
 import io
+import itertools
 import json
 import lzma
 from pathlib import Path
@@ -12,6 +14,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -23,6 +26,17 @@ REPO = Path(__file__).resolve().parent.parent
 
 ROM = b"\x13\x00\x00\x00"
 ARTICLE = b"1\n2\nnil\n" * 1000
+RUNNER = {"name": "blacksmith-1", "cpuModel": "AMD EPYC 9454P 48-Core Processor", "cpuCount": 32}
+# The fake clock and rusage advance by 3600.27 s wall and 5388.04 s CPU per verifier run.
+TIMING = {"verifySeconds": 3600.3, "verifyCpuSeconds": 5388.0, "verifyRunner": RUNNER}
+# What scripts/run.py wrote before verifier timing was recorded.
+LEGACY = {
+    "infinity": '{"score": 9007199254740991, "metrics": {"claim": "infinity", "finite": false, "prover": "hol", '
+                f'"verification": "article", "romSha256": "{"r" * 64}", "proofSha256": "{"p" * 64}", '
+                '"contractCommit": "abc123"}}\n',
+    1234: '{"score": 1234, "metrics": {"claim": 1234, "finite": true, "prover": "hol", "verification": "article", '
+          f'"romSha256": "{"r" * 64}", "proofSha256": "{"p" * 64}", "contractCommit": "abc123"}}}}\n',
+}
 
 
 def zip_bytes(entries, compression=zipfile.ZIP_DEFLATED) -> bytearray:
@@ -56,12 +70,28 @@ class Harness(unittest.TestCase):
         (self.candidate / "rom.bin").write_bytes(ROM)
         (self.candidate / "claim.json").write_text('{"K":"infinity"}')
         (self.root / "benchmark.json").write_bytes((REPO / "benchmark.json").read_bytes())
+        cpuinfo = self.root / "cpuinfo"
+        cpuinfo.write_text(f"processor\t: 0\nmodel name\t: {RUNNER['cpuModel']}\n\nprocessor\t: 1\nmodel name\t: x\n")
+        usage = itertools.cycle([SimpleNamespace(ru_utime=10.0, ru_stime=2.0),
+                                 SimpleNamespace(ru_utime=5000.0, ru_stime=400.04)])
+        self.clock = patch.object(run.time, "monotonic", side_effect=itertools.cycle([100.0, 3700.27]))
         self.patches = [patch.object(run, "ROOT", self.root), patch.object(run, "CANDIDATE", self.candidate),
-                        patch.object(run, "TOOLS", self.root / "work")]
+                        patch.object(run, "TOOLS", self.root / "work"),
+                        patch.object(run, "CPUINFO", cpuinfo), patch.object(run.os, "cpu_count", return_value=32),
+                        patch.dict(run.os.environ, {"RUNNER_NAME": "blacksmith-1"}),
+                        patch.object(run.resource, "getrusage", side_effect=lambda who: next(usage)), self.clock]
         for p in self.patches:
             p.start()
             self.addCleanup(p.stop)
         self.score = self.root / "scripts" / "score.json"
+        self.stderr = io.StringIO()
+        redirect = contextlib.redirect_stderr(self.stderr)
+        redirect.__enter__()
+        self.addCleanup(redirect.__exit__, None, None, None)
+
+    def timing_logged(self):
+        lines = [line for line in self.stderr.getvalue().splitlines() if line.startswith("Verifier timing: ")]
+        return [json.loads(line.removeprefix("Verifier timing: ")) for line in lines]
 
     def verifier(self, report, returncode=0, stdout=None):
         completed = subprocess.CompletedProcess([], returncode, stdout=stdout if stdout is not None else json.dumps(report))
@@ -89,8 +119,30 @@ class Harness(unittest.TestCase):
         self.assertEqual(result["score"], 2**53 - 1)
         self.assertEqual(result["metrics"], {"claim": "infinity", "finite": False, "prover": "hol",
                                              "verification": "article", "romSha256": "r" * 64,
-                                             "proofSha256": "p" * 64, "contractCommit": "abc123"})
+                                             "proofSha256": "p" * 64, "contractCommit": "abc123", **TIMING})
         self.assertEqual(self.submitted["certificate.art"], ARTICLE)
+
+    def test_score_bytes_unchanged_and_timing_appended(self):
+        (self.candidate / "certificate.art").write_bytes(ARTICLE)
+        for K, legacy in LEGACY.items():
+            self.run_main(self.report(K))
+            text = self.score.read_text()
+            self.assertEqual(text, legacy[:-len("}}\n")] + ", " + json.dumps(TIMING)[1:] + "}\n")
+            self.assertTrue(text.startswith(f'{{"score": {2**53 - 1 if K == "infinity" else K}, "metrics": '))
+
+    def test_verify_seconds_is_positive_float(self):
+        (self.candidate / "certificate.art").write_bytes(ARTICLE)
+        with patch.object(run.time, "monotonic", side_effect=[5.0, 5.26]):
+            metrics = self.run_main(self.report(7))["metrics"]
+        self.assertIsInstance(metrics["verifySeconds"], float)
+        self.assertEqual(metrics["verifySeconds"], 0.3)
+        self.assertIsInstance(metrics["verifyCpuSeconds"], float)
+        self.assertGreater(metrics["verifyCpuSeconds"], 0)
+
+    def test_runner_info(self):
+        self.assertEqual(run.runner(), RUNNER)
+        with patch.object(run, "CPUINFO", self.root / "missing"), patch.dict(run.os.environ, {"RUNNER_NAME": ""}):
+            self.assertEqual(run.runner(), {"cpuCount": 32})
 
     def test_finite_k_is_the_score(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
@@ -117,6 +169,7 @@ class Harness(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 self.run_main(report, **kwargs)
             self.assertFalse(self.score.exists())
+        self.assertEqual(self.timing_logged(), [TIMING] * 5)
 
     def test_xz_certificate_is_expanded(self):
         (self.candidate / "certificate.art.xz").write_bytes(lzma.compress(ARTICLE))
@@ -129,6 +182,7 @@ class Harness(unittest.TestCase):
         with self.assertRaises(SystemExit), self.verifier(self.report(1)):
             run.main()
         self.assertFalse(self.score.exists())
+        self.assertEqual(self.timing_logged(), [])
 
     def test_disk_full_is_reported_as_such(self):
         class FullDisk:

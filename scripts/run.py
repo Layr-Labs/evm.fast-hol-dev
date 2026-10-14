@@ -14,10 +14,12 @@ import json
 import lzma
 import os
 from pathlib import Path
+import resource
 import stat
 import struct
 import subprocess
 import sys
+import time
 import uuid
 import zipfile
 import zlib
@@ -32,6 +34,7 @@ CANDIDATE = ROOT / "candidate"
 TOOLS = ROOT / "work"
 CERTIFICATES = ("certificate.art", "certificate.art.xz", "certificate.art.zip")
 CHUNK = 1 << 20
+CPUINFO = Path("/proc/cpuinfo")
 # Yukon scores are doubles and come back with 15 significant digits, so this sentinel reads back as
 # 9007199254740990, as does every value from FINITE_LIMIT up. A finite K must stay below FINITE_LIMIT
 # to remain distinguishable from infinity.
@@ -170,7 +173,30 @@ def materialize(candidate: Path, destination: Path) -> str:
     raise Invalid("candidate/ has no certificate.art, certificate.art.xz or certificate.art.zip")
 
 
-def run_verifier(submission: Path, work: Path) -> dict:
+def runner() -> dict:
+    """Non-secret details of the machine that ran the verifier, for comparing verifySeconds."""
+    info = {}
+    if os.environ.get("RUNNER_NAME"):
+        info["name"] = os.environ["RUNNER_NAME"]
+    try:
+        with CPUINFO.open() as cpuinfo:
+            model = next((line.split(":", 1)[1].strip() for line in cpuinfo if line.startswith("model name")), "")
+    except OSError:
+        model = ""
+    if model:
+        info["cpuModel"] = model
+    info["cpuCount"] = os.cpu_count()
+    return info
+
+
+def children_cpu_seconds() -> float:
+    # Counts only waited-for descendants: correct for the verifier's plain process tree, but it
+    # would miss work inside a Bubblewrap sandbox (verify.py --hide, which run.py does not pass).
+    usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+    return usage.ru_utime + usage.ru_stime
+
+
+def run_verifier(submission: Path, work: Path) -> tuple[dict, dict]:
     polyml = TOOLS / "polyml"
     env = dict(os.environ, PATH=f"{polyml / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}",
                LD_LIBRARY_PATH=os.pathsep.join(filter(None, [str(polyml / "lib"), os.environ.get("LD_LIBRARY_PATH")])))
@@ -178,16 +204,21 @@ def run_verifier(submission: Path, work: Path) -> dict:
     command = [sys.executable, str(ROOT / "verifier" / "verify.py"), "--local", str(submission),
                "--trusted", str(ROOT), "--hol", str(TOOLS / "HOL"), "--work", str(work),
                "--timeout", str(TIMEOUT_SECONDS), "--memory-gib", str(MEMORY_GIB), "--progress"]
+    cpu = children_cpu_seconds()
+    started = time.monotonic()
     process = subprocess.run(command, stdout=subprocess.PIPE, text=True, cwd=ROOT, env=env)
+    # Informational only: verification time does not affect the score.
+    timing = {"verifySeconds": round(time.monotonic() - started, 1),
+              "verifyCpuSeconds": round(children_cpu_seconds() - cpu, 1), "verifyRunner": runner()}
     try:
         report = json.loads(process.stdout)
     except ValueError:
-        return {"status": "failed", "reason": "verifier printed no JSON report", "returncode": process.returncode}
+        return {"status": "failed", "reason": "verifier printed no JSON report", "returncode": process.returncode}, timing
     if not isinstance(report, dict):
-        return {"status": "failed", "reason": "malformed verifier report", "returncode": process.returncode}
+        return {"status": "failed", "reason": "malformed verifier report", "returncode": process.returncode}, timing
     if process.returncode != 0 and report.get("status") == "verified":
-        return dict(report, status="failed", reason=f"verifier exited {process.returncode}")
-    return report
+        return dict(report, status="failed", reason=f"verifier exited {process.returncode}"), timing
+    return report, timing
 
 
 def main() -> None:
@@ -203,8 +234,9 @@ def main() -> None:
             raise SystemExit(f"Runner ran out of disk space preparing the candidate: {exc}")
         raise SystemExit(f"Invalid candidate: {exc}")
     print(f"Certificate supplied as: {source}", file=sys.stderr)
-    report = run_verifier(work / "submission", work / "replay")
+    report, timing = run_verifier(work / "submission", work / "replay")
     print(json.dumps(report, sort_keys=True))
+    print(f"Verifier timing: {json.dumps(timing)}", file=sys.stderr)
     if report.get("status") != "verified":
         raise SystemExit(f"Verifier did not accept the submission: {report.get('status')}")
     claim = report.get("K")
@@ -217,7 +249,7 @@ def main() -> None:
     contract = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=ROOT).strip()
     metrics = {"claim": claim, "finite": claim != "infinity", "prover": "hol", "verification": "article",
                "romSha256": report["rom_sha256"], "proofSha256": report["proof_sha256"],
-               "contractCommit": contract}
+               "contractCommit": contract, **timing}
     temporary = score_path.with_suffix(".tmp")
     temporary.write_text(json.dumps({"score": score, "metrics": metrics}) + "\n")
     temporary.replace(score_path)
