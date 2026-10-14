@@ -23,7 +23,20 @@
       "runner": {
         "provider": "github-actions",
         "workflow": "benchmark.yml"
-      }
+      },
+      "largeFiles": [
+        {
+          "name": "certificate",
+          "paths": [
+            "candidate/certificate.art.zip",
+            "candidate/certificate.art.xz",
+            "candidate/certificate.art"
+          ],
+          "maxBytes": 314572800,
+          "maxExpandedBytes": 3221225472,
+          "required": false
+        }
+      ]
     }
   ]
 }

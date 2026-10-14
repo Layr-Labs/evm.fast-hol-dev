@@ -16,21 +16,25 @@
     named `certificate.art`, for example `zip -9 certificate.art.zip certificate.art`). The
     harness expands a compressed form, refusing more than 3 GiB, and passes a fresh `rom.bin`,
     `claim.json` and `certificate.art` to `verifier/verify.py`.
-
-  Only the unchanged baseline (`candidate/rom.bin` identical to `artifacts/baseline/rom.bin`,
-  claiming infinity) may omit the certificate. It is then checked with the operator-published
-  baseline article, whose hash is in `artifacts/baseline/verification.json` and whose size and
-  hash are pinned in `scripts/baseline-article.json`.
+- The certificate is a large file: Git and the Yukon archive carry only a pointer,
+  `candidate/<certificate file>.yukon-ref.json` (its size and SHA-256), and the file itself is
+  stored by Yukon. Put the real file at its path; `yukon submit --track hol` uploads it (resuming
+  an interrupted upload) and submits the pointer. A pointer you leave unchanged, such as the
+  baseline's `candidate/certificate.art.zip.yukon-ref.json`, is submitted as-is. Keep exactly one
+  of the three certificate files; delete a stale pointer if you switch formats.
+- `yukon setup --track hol` downloads the file each pointer names, so `yukon run --track hol`
+  works in a fresh clone. The official run fetches it the same way (`scripts/large_files.py`)
+  and refuses a file whose size or SHA-256 differs from its pointer.
 - Changes outside `candidate/` are dropped from Yukon submissions.
 
 ## Size limits
 
-- Yukon archives are limited to 25 MiB compressed, 512 MiB expanded and 10,000 entries. Yukon
-  commits the submission to Git, and GitHub rejects files over 100 MB.
-- The baseline article is 2,803,497,058 bytes. An article of that size fits only if it
-  compresses below 25 MiB, a ratio above 106x. Upstream measured zstd at 97,104,273 bytes and
-  zip at 98,247,790 bytes, about 29x (`artifacts/baseline/certificate-compression.json`); xz
-  has not been measured.
+- The certificate file may be at most 300 MiB (314,572,800 bytes) as uploaded and 3 GiB
+  (3,221,225,472 bytes) expanded. zstd is not accepted.
+- The rest of `candidate/` goes in the Yukon archive: 25 MiB compressed, 512 MiB expanded and
+  10,000 entries.
+- The baseline article is 2,803,497,058 bytes; upstream's zip of it is 98,247,790 bytes, about
+  29x (`artifacts/baseline/certificate-compression.json`). xz has not been measured.
 - The article must be self-contained. Replay trusts only HOL's four foundational axioms, the
   literal definitions built from your `rom.bin` and `claim.json`, and the definitions and
   theorems of `initProofLibrary` and its ancestors. It cannot cite baseline theories such as
