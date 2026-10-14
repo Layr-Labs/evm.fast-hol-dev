@@ -9,6 +9,7 @@ article that scripts/setup.sh fetched and checked against scripts/baseline-artic
 """
 from __future__ import annotations
 
+import errno
 import json
 import lzma
 import os
@@ -51,14 +52,19 @@ def open_regular(path: Path):
     return os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb")
 
 
+def copy_bounded(src, dst, limit: int, label: str) -> None:
+    """Copies the stream in chunks, failing before more than limit bytes are written."""
+    size = 0
+    while chunk := src.read(CHUNK):
+        size += len(chunk)
+        if size > limit:
+            raise Invalid(f"{label} exceeds {limit} bytes")
+        dst.write(chunk)
+
+
 def copy(source: Path, target: Path, limit: int) -> None:
     with open_regular(source) as src, target.open("xb") as dst:
-        size = 0
-        while chunk := src.read(CHUNK):
-            size += len(chunk)
-            if size > limit:
-                raise Invalid(f"{source.name} exceeds {limit} bytes")
-            dst.write(chunk)
+        copy_bounded(src, dst, limit, source.name)
 
 
 def expand_xz(source: Path, target: Path, limit: int) -> None:
@@ -126,12 +132,7 @@ def expand_zip(source: Path, target: Path, limit: int) -> None:
                 raise Invalid(f"certificate.art.zip declares more than {limit} bytes")
             # The declared size is not trusted: output is counted, and zipfile checks CRC-32 at the end.
             with archive.open(info) as stream, target.open("xb") as dst:
-                size = 0
-                while chunk := stream.read(CHUNK):
-                    size += len(chunk)
-                    if size > limit:
-                        raise Invalid(f"certificate.art.zip expands beyond {limit} bytes")
-                    dst.write(chunk)
+                copy_bounded(stream, dst, limit, "certificate.art expanded from certificate.art.zip")
 
 
 def materialize(candidate: Path, destination: Path) -> str:
@@ -199,6 +200,8 @@ def main() -> None:
     try:
         source = materialize(CANDIDATE, work / "submission")
     except (OSError, ValueError, EOFError, lzma.LZMAError, zipfile.BadZipFile, zlib.error) as exc:
+        if isinstance(exc, OSError) and exc.errno in (errno.ENOSPC, errno.EDQUOT):
+            raise SystemExit(f"Runner ran out of disk space preparing the candidate: {exc}")
         raise SystemExit(f"Invalid candidate: {exc}")
     print(f"Certificate supplied as: {source}", file=sys.stderr)
     report = run_verifier(work / "submission", work / "replay")

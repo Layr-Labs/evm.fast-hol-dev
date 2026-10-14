@@ -1,6 +1,7 @@
 """Score mapping and fail-closed checks for scripts/run.py, with the verifier mocked."""
 from __future__ import annotations
 
+import errno
 import hashlib
 import io
 import json
@@ -130,6 +131,38 @@ class Harness(unittest.TestCase):
         with self.assertRaises(SystemExit), self.verifier(self.report(1)):
             run.main()
         self.assertFalse(self.score.exists())
+
+    def test_disk_full_is_reported_as_such(self):
+        class FullDisk:
+            def __init__(self, handle):
+                self.handle = handle
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                self.handle.close()
+
+            def write(self, data):
+                raise OSError(errno.ENOSPC, "No space left on device")
+
+        real_open = Path.open
+
+        def open_full(path, mode="r", *args, **kwargs):
+            handle = real_open(path, mode, *args, **kwargs)
+            return FullDisk(handle) if "x" in mode and path.name == "certificate.art" else handle
+
+        for name, data in (("certificate.art", ARTICLE), ("certificate.art.zip", bytes(zip_bytes([("certificate.art", ARTICLE, None)])))):
+            for other in run.CERTIFICATES:
+                (self.candidate / other).unlink(missing_ok=True)
+            (self.candidate / name).write_bytes(data)
+            self.score.write_text("stale")
+            with patch.object(run.Path, "open", open_full), self.verifier(self.report(1)):
+                with self.assertRaises(SystemExit) as raised:
+                    run.main()
+            self.assertIn("out of disk space", str(raised.exception.code))
+            self.assertNotIn("Invalid candidate", str(raised.exception.code))
+            self.assertFalse(self.score.exists())
 
     def test_xz_bomb_truncation_and_trailing_data_rejected(self):
         packed = lzma.compress(ARTICLE)
