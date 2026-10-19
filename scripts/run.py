@@ -207,7 +207,7 @@ def run_verifier(submission: Path, work: Path) -> tuple[dict, dict]:
     cpu = children_cpu_seconds()
     started = time.monotonic()
     process = subprocess.run(command, stdout=subprocess.PIPE, text=True, cwd=ROOT, env=env)
-    # Informational only: verification time does not affect the score.
+    # Official runs add verifySeconds to the score afterwards (scripts/time_score.py).
     timing = {"verifySeconds": round(time.monotonic() - started, 1),
               "verifyCpuSeconds": round(children_cpu_seconds() - cpu, 1), "verifyRunner": runner()}
     try:
