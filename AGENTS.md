@@ -55,10 +55,11 @@
   infinity, so any accepted finite `K` improves it.
 - Yukon stores scores as doubles and returns them with 15 significant digits, so the infinity
   score reads back as `9007199254740990`, as does every value from `9007199254740985` up. A
-  finite `K` of `9007199254740985` or more is rejected. A `K` of 10^11 or more carries no
-  minutes, since they would round into `K`, so equal bounds that large stay tied; from about
-  9 * 10^11 every timed score is capped at `9007199254740984`, still below infinity, and those
-  bounds tie.
+  finite `K` of `900719925475` or more is rejected in official runs, since `K * 10^4` would
+  read back as infinity. A `K` of 10^11 or more carries no minutes, since they would round into `K`, so equal
+  bounds that large stay tied.
+- Official scores, as `yukon` prints them, read as `K = floor(score / 10^4)`, with the
+  verification minutes in the last four digits.
 - A score is written only when the verifier reports `verified`; otherwise `scripts/run.py` exits
   nonzero and writes no score. `metrics` records the claim, the verifier's ROM and proof
   SHA-256 and the harness commit.
