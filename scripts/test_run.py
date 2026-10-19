@@ -122,13 +122,16 @@ class Harness(unittest.TestCase):
                                              "proofSha256": "p" * 64, "contractCommit": "abc123", **TIMING})
         self.assertEqual(self.submitted["certificate.art"], ARTICLE)
 
-    def test_score_bytes_unchanged_and_timing_appended(self):
+    def test_score_carries_minutes_and_timing_is_appended(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
+        # 3600.3 s rounds up to 61 minutes, below K's digits.
         for K, legacy in LEGACY.items():
             self.run_main(self.report(K))
             text = self.score.read_text()
-            self.assertEqual(text, legacy[:-len("}}\n")] + ", " + json.dumps(TIMING)[1:] + "}\n")
-            self.assertTrue(text.startswith(f'{{"score": {2**53 - 1 if K == "infinity" else K}, "metrics": '))
+            score = 2**53 - 1 if K == "infinity" else K * 10_000 + 61
+            expected = legacy.replace(f'"score": {2**53 - 1 if K == "infinity" else K},', f'"score": {score},', 1)
+            self.assertEqual(text, expected[:-len("}}\n")] + ", " + json.dumps(TIMING)[1:] + "}\n")
+            self.assertTrue(text.startswith(f'{{"score": {score}, "metrics": '))
 
     def test_verify_seconds_is_positive_float(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
@@ -144,15 +147,17 @@ class Harness(unittest.TestCase):
         with patch.object(run, "CPUINFO", self.root / "missing"), patch.dict(run.os.environ, {"RUNNER_NAME": ""}):
             self.assertEqual(run.runner(), {"cpuCount": 32})
 
-    def test_finite_k_is_the_score(self):
+    def test_finite_k_is_scored_with_its_minutes(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        for K in [0, 123, run.FINITE_LIMIT - 1]:
+        largest = run.time_score.LARGEST_K
+        for K, score in [(0, 61), (123, 1_230_061), (largest, largest * 10_000)]:
             result = self.run_main(self.report(K))
-            self.assertEqual((result["score"], result["metrics"]["claim"], result["metrics"]["finite"]), (K, K, True))
+            self.assertEqual((result["score"], result["metrics"]["claim"], result["metrics"]["finite"]),
+                             (score, K, True))
 
     def test_k_at_rounding_limit_fails_closed(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        for K in [run.FINITE_LIMIT, 2**53 - 1, 2**64, -1, True, "7", 1.5]:
+        for K in [run.time_score.LARGEST_K + 1, 2**53 - 1, 2**64, -1, True, "7", 1.5]:
             self.score.write_text("stale")
             with self.assertRaises(SystemExit):
                 self.run_main(self.report(K))
