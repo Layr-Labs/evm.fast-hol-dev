@@ -113,10 +113,10 @@ class Harness(unittest.TestCase):
     def report(self, K):
         return {"status": "verified", "K": K, "rom_bytes": 4, "rom_sha256": "r" * 64, "proof_sha256": "p" * 64}
 
-    def test_infinity_scores_max_safe_integer(self):
+    def test_infinity_scores_the_exact_infinity_pair(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
         result = self.run_main(self.report("infinity"))
-        self.assertEqual(result["score"], 2**53 - 1)
+        self.assertEqual((result["score"], result["scoreExact"]), (1e300, "1" + "0" * 300))
         self.assertEqual(result["metrics"], {"claim": "infinity", "finite": False, "prover": "hol",
                                              "verification": "article", "romSha256": "r" * 64,
                                              "proofSha256": "p" * 64, "contractCommit": "abc123", **TIMING})
@@ -128,10 +128,13 @@ class Harness(unittest.TestCase):
         for K, legacy in LEGACY.items():
             self.run_main(self.report(K))
             text = self.score.read_text()
-            score = 2**53 - 1 if K == "infinity" else K * 10_000 + 61
+            score = '1e+300, "scoreExact": "1' + "0" * 300 + '"' if K == "infinity" else \
+                f'{K * 10_000 + 61}, "scoreExact": "{K * 10_000 + 61}"'
             expected = legacy.replace(f'"score": {2**53 - 1 if K == "infinity" else K},', f'"score": {score},', 1)
             self.assertEqual(text, expected[:-len("}}\n")] + ", " + json.dumps(TIMING)[1:] + "}\n")
             self.assertTrue(text.startswith(f'{{"score": {score}, "metrics": '))
+            result = json.loads(text)
+            self.assertEqual(result["score"], float(result["scoreExact"]))
 
     def test_verify_seconds_is_positive_float(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
@@ -150,14 +153,17 @@ class Harness(unittest.TestCase):
     def test_finite_k_is_scored_with_its_minutes(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
         largest = run.time_score.LARGEST_K
-        for K, score in [(0, 61), (123, 1_230_061), (largest, largest * 10_000)]:
+        for K in [0, 123, 2**53 - 1, 10**121, largest]:
             result = self.run_main(self.report(K))
-            self.assertEqual((result["score"], result["metrics"]["claim"], result["metrics"]["finite"]),
-                             (score, K, True))
+            self.assertEqual((result["scoreExact"], result["metrics"]["claim"], result["metrics"]["finite"]),
+                             (str(K * 10_000 + 61), K, True))
+            self.assertEqual(result["score"], float(result["scoreExact"]))
+        self.assertEqual(self.run_main(self.report(123))["score"], 1_230_061)
+        self.assertEqual(self.run_main(self.report(10**121))["score"], 1e125)
 
-    def test_k_at_rounding_limit_fails_closed(self):
+    def test_k_beyond_299_digits_fails_closed(self):
         (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        for K in [run.time_score.LARGEST_K + 1, 2**53 - 1, 2**64, -1, True, "7", 1.5]:
+        for K in [run.time_score.LARGEST_K + 1, 10**300, -1, True, "7", 1.5]:
             self.score.write_text("stale")
             with self.assertRaises(SystemExit):
                 self.run_main(self.report(K))
