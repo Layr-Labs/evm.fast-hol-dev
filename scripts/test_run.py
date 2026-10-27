@@ -218,6 +218,7 @@ class Repository(unittest.TestCase):
     def test_manifest_paths(self):
         track, = json.loads((REPO / "benchmark.json").read_text())["tracks"]
         self.assertNotIn("largeFiles", track)
+        self.assertLessEqual(len(track["hardware"]), 500)  # Yukon rejects longer hardware notes on import
         for path in track["editablePaths"]:
             self.assertTrue((REPO / path).exists(), path)
             self.assertFalse(Path(track["scorePath"]).is_relative_to(path))
