@@ -8,37 +8,19 @@
 - `benchmark.json` is schema v2 with one track, `hol`. Pass `--track hol` to `yukon setup`,
   `yukon run` and `yukon submit`. `yukon switch` changes only Yukon's track selection; it keeps
   your Git branch, `HEAD`, index and worktree.
-- Yukon submissions on the `hol` track replace only `candidate/`. It must contain exactly:
+- Yukon submissions on the `hol` track replace only `candidate/`, upstream's source envelope. It
+  must contain exactly:
   - `rom.bin`: the submitted bytes, at most 128 MiB.
   - `claim.json`: exactly `{"K":123}` or `{"K":"infinity"}`.
-  - One of `certificate.art` (an OpenTheory article), `certificate.art.xz` (the same article as
-    one xz stream) or `certificate.art.zip` (a zip holding exactly one stored or deflated file
-    named `certificate.art`, for example `zip -9 certificate.art.zip certificate.art`). The
-    harness expands a compressed form, refusing more than 3 GiB, and passes a fresh `rom.bin`,
-    `claim.json` and `certificate.art` to `verifier/verify.py`.
-- The certificate is a large file: Git and the Yukon archive carry only a pointer,
-  `candidate/<certificate file>.yukon-ref.json` (its size and SHA-256), and the file itself is
-  stored by Yukon. Put the real file at its path; `yukon submit --track hol` uploads it (resuming
-  an interrupted upload) and submits the pointer. A pointer you leave unchanged, such as the
-  baseline's `candidate/certificate.art.zip.yukon-ref.json`, is submitted as-is. Keep exactly one
-  of the three certificate files; delete a stale pointer if you switch formats.
-- `yukon setup --track hol` downloads the file each pointer names, so `yukon run --track hol`
-  works in a fresh clone. The official run fetches it the same way (`scripts/large_files.py`)
-  and refuses a file whose size or SHA-256 differs from its pointer.
+  - `experiments/`: flat regular files named `<Name>Script.sml`, `<Name>Lib.sml` or
+    `<Name>Lib.sig`, plus the required `original-allocation.term` (an untrusted register-allocation
+    hint that HOL checks). At most 256 files, 16 MiB each and 64 MiB in total. No subdirectories,
+    symlinks or build outputs: build elsewhere (see Verification).
+- There is no certificate file: the verifier generates the OpenTheory article from your sources.
+  The baseline in `candidate/` is upstream's accepted envelope (145 files, 3,045,749 bytes,
+  `artifacts/software-guest/source-submission-manifest.json`), and it targets the baseline
+  `initBaselineCertificate` theory tree.
 - Changes outside `candidate/` are dropped from Yukon submissions.
-
-## Size limits
-
-- The certificate file may be at most 300 MiB (314,572,800 bytes) as uploaded and 3 GiB
-  (3,221,225,472 bytes) expanded. zstd is not accepted.
-- The rest of `candidate/` goes in the Yukon archive: 25 MiB compressed, 512 MiB expanded and
-  10,000 entries.
-- The baseline article is 2,803,497,058 bytes; upstream's zip of it is 98,247,790 bytes, about
-  29x (`artifacts/baseline/certificate-compression.json`). xz has not been measured.
-- The article must be self-contained. Replay trusts only HOL's four foundational axioms, the
-  literal definitions built from your `rom.bin` and `claim.json`, and the definitions and
-  theorems of `initProofLibrary` and its ancestors. It cannot cite baseline theories such as
-  `initBaselineCertificate` or `initArtifacts`, or facts from another submission.
 
 ## Score
 
@@ -62,31 +44,39 @@
   `1e300`, above every finite score. The initial submission claims infinity, so any accepted
   finite `K` improves it.
 - `K = floor(scoreExact / 10^4)`, with the verification minutes in the last four digits.
-- A score is written only when the verifier reports `verified`; otherwise `scripts/run.py` exits
-  nonzero and writes no score. `metrics` records the claim, the verifier's ROM and proof
-  SHA-256 and the harness commit.
-- `metrics.verifySeconds` and `metrics.verifyCpuSeconds` are the verifier's wall and CPU time,
-  and `metrics.verifyRunner` describes the runner.
+- A score is written only when the verifier reports `verified` after strict replay; otherwise
+  `scripts/run.py` exits nonzero, prints the end of a failed author stage's log and writes no
+  score. `metrics` records the claim, the ROM and generated-article SHA-256 and the harness commit.
+- `metrics.verifySeconds` is the whole verifier's wall time (build, export, bind, package and
+  strict replay), and the minutes come from it. `metrics.verifyCpuSeconds` undercounts work
+  inside the author sandbox, and `metrics.verifyRunner` describes the runner.
 
 ## Verification
 
-`scripts/run.py` runs `verifier/verify.py --local` unchanged, with `--timeout 21600
---memory-gib 112`. The verifier checks the trusted file hashes and the CakeML pin, freezes the
-submitted files, builds HOL literals from the ROM and claim, and replays the article in a fresh
-HOL process with the operator-built heap. It never executes candidate ML. It accepts only a
-closed proof of exactly the fixed Certificate. Upstream's baseline replay took 8,973 seconds and
-peaked at 90.4 GiB RSS with an 84 GiB Poly/ML heap (`--memory-gib 112`).
+`scripts/run.py` runs `verifier/verify.py candidate --hol work/HOL --author-hol work/HOL-export`
+unchanged, with `--source-timeout 36000 --source-memory-gib 64 --timeout 21600 --memory-gib 112`,
+and stops it after 75,600 s. The verifier checks the trusted file hashes and the CakeML pin,
+freezes the envelope, then runs four author stages (build, export, bind, package) in a Bubblewrap
+sandbox: no network, read-only toolchain and repository, a cleared environment, and per-stage
+CPU, wall and address-space limits. Your ML runs only there. The generated article (upstream's
+baseline: 4,446,682,307 bytes, 8 GiB limit) is then replayed by the standard HOL with the
+operator-built heap, which accepts only a closed proof of exactly the fixed Certificate.
+Upstream's accepted baseline run took 39,177 s (10 h 53 min) end to end, 13,128 s of it strict
+replay, and peaked at 90.25 GiB RSS with an 84 GiB Poly/ML heap.
 
 Run `bash scripts/setup.sh`, then `python3 scripts/run.py` (what `yukon setup --track hol` and
-`yukon run --track hol` do). Setup needs git, curl, a C/C++ toolchain, GMP and Python 3.11 or
-newer. It builds the pinned Poly/ML and HOL4 under `work/`, checks out the pinned CakeML
-submodule and builds the verifier heap; the cold build has not been timed. Replaying a
-baseline-sized article needs about 91 GiB of RAM. Do not claim verification without a
-successful run.
+`yukon run --track hol` do). Setup needs Linux, git, curl, a C/C++ toolchain, GMP, Bubblewrap with
+unprivileged user namespaces, and Python 3.11 or newer. It builds the pinned Poly/ML, the standard
+HOL4 tree and the tracing HOL4 tree (`tools/prepare_exporter.py`) under `work/`, checks out the
+pinned CakeML submodule, builds the baseline theories in `.build/` and prepares the verifier heap.
+A cold setup takes hours; official runs restore it from a cache that
+`.github/workflows/warm-cache.yml` saves on `main`. A baseline-sized run needs about 91 GiB of
+RAM. Do not claim verification without a successful run.
 
-Producing an article uses upstream's author export pipeline
-([verifier/README.md](verifier/README.md#author-proof-export)), which needs a separate
-tracing-kernel HOL checkout.
+To iterate on proofs before a full run, use upstream's author tools
+([verifier/README.md](verifier/README.md#author-proof-export)): `tools/build.py --build-dir
+<dir> --experiments-dir candidate/experiments` builds your sources outside `candidate/`, and
+`tools/export_baseline.py` exports them.
 
 ## Notes
 

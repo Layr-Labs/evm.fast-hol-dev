@@ -1,0 +1,1129 @@
+(* Adapted from the pinned CakeML RISC-V encoder correctness proof.
+   See ../CAKEML-LICENSE. The assembler/configuration proof is preserved;
+   target execution uses the restricted symbolic evaluator, which requires
+   a kernel-checked supported constructor for each generated step. *)
+(*
+  Prove `encoder_correct` for RISC-V
+*)
+Theory initRestrictedEncoder
+Ancestors
+  initRestrictedTarget asmSigned
+Libs
+  preamble asmLib riscv_stepLib restrictedStepLoaderLib
+
+open riscv_targetTheory initMachineTheory initRestrictedTargetTheory;
+val _ = Feedback.set_trace "TheoryPP.include_html_docs" 0;
+val _ = restrictedStepLoaderLib.load ();
+
+val () = wordsLib.guess_lengths()
+
+(* some lemmas ---------------------------------------------------------- *)
+
+Theorem bytes_in_memory_thm[local]:
+  !w s state a b c d.
+      target_state_rel restrictedTarget s state /\
+      bytes_in_memory s.pc [a; b; c; d] s.mem s.mem_domain ==>
+      (state.exception = NoException) /\
+      ((state.c_MCSR state.procID).mstatus.VM = 0w) /\
+      ((state.c_MCSR state.procID).mcpuid.ArchBase = 2w) /\
+      (state.c_NextFetch state.procID = NONE) /\
+      aligned 2 (state.c_PC state.procID) /\
+      (state.MEM8 (state.c_PC state.procID) = a) /\
+      (state.MEM8 (state.c_PC state.procID + 1w) = b) /\
+      (state.MEM8 (state.c_PC state.procID + 2w) = c) /\
+      (state.MEM8 (state.c_PC state.procID + 3w) = d) /\
+      state.c_PC state.procID + 3w IN s.mem_domain /\
+      state.c_PC state.procID + 2w IN s.mem_domain /\
+      state.c_PC state.procID + 1w IN s.mem_domain /\
+      state.c_PC state.procID IN s.mem_domain
+Proof
+  rw [asmPropsTheory.target_state_rel_def, restricted_target_expanded, riscv_config_def,
+       riscv_ok_def, miscTheory.bytes_in_memory_def,
+       alignmentTheory.aligned_extract, set_sepTheory.fun2set_eq]
+   \\ fs []
+QED
+
+Theorem bytes_in_memory_thm2[local]:
+  !w s state a b c d.
+      target_state_rel restrictedTarget s state /\
+      bytes_in_memory (s.pc + w) [a; b; c; d] s.mem s.mem_domain ==>
+      (state.MEM8 (state.c_PC state.procID + w) = a) /\
+      (state.MEM8 (state.c_PC state.procID + w + 1w) = b) /\
+      (state.MEM8 (state.c_PC state.procID + w + 2w) = c) /\
+      (state.MEM8 (state.c_PC state.procID + w + 3w) = d) /\
+      state.c_PC state.procID + w + 3w IN s.mem_domain /\
+      state.c_PC state.procID + w + 2w IN s.mem_domain /\
+      state.c_PC state.procID + w + 1w IN s.mem_domain /\
+      state.c_PC state.procID + w IN s.mem_domain
+Proof
+  rw [asmPropsTheory.target_state_rel_def, restricted_target_expanded, riscv_config_def,
+       riscv_ok_def, miscTheory.bytes_in_memory_def,
+       alignmentTheory.aligned_extract, set_sepTheory.fun2set_eq]
+   \\ fs []
+QED
+
+val lem1 = asmLib.v2w_BIT_n2w 5
+val lem2 = asmLib.v2w_BIT_n2w 6
+
+val lem4 = blastLib.BBLAST_PROVE
+  ``0xFFFFFFFFFFFFF800w <= c /\ c <= 0x7FFw ==>
+    (sw2sw
+      (v2w [c ' 11; c ' 10; c ' 9; c ' 8; c ' 7; c ' 6; c ' 5;
+            c ' 4; c ' 3; c ' 2; c ' 1; c ' 0] : word12) = c : word64)``
+
+
+Theorem lem5[local]:
+  aligned 2 (c: word64) ==> ~c ' 1
+Proof
+  simp [alignmentTheory.aligned_extract]
+  \\ blastLib.BBLAST_TAC
+QED
+
+val lem6 = blastLib.BBLAST_PROVE
+  ``(((31 >< 0) (c: word64) : word32) ' 11 = c ' 11) /\
+    (((63 >< 32) c : word32) ' 11 = c ' 43) /\
+    (~(63 >< 32) c : word32 ' 11 = ~c ' 43) ``
+
+val lem7 = CONJ (bitstringLib.v2w_n2w_CONV ``v2w [F] : word64``)
+                (bitstringLib.v2w_n2w_CONV ``v2w [T] : word64``)
+
+Theorem lem8[local]:
+  ((if b then 1w else 0w : word64) = (v2w [x] || v2w [y])) = (b = (x \/ y))
+Proof
+  rw [] \\ blastLib.BBLAST_TAC
+QED
+
+Theorem lem9[local]:
+  !r2 : word64 r3 : word64.
+    (18446744073709551616 <= w2n r2 + (w2n r3 + 1) <=>
+     18446744073709551616w <=+ w2w r2 + w2w r3 + 1w : 65 word) /\
+    (18446744073709551616 <= w2n r2 + w2n r3 <=>
+     18446744073709551616w <=+ w2w r2 + w2w r3 : 65 word)
+Proof
+  Cases
+   \\ Cases
+   \\ imp_res_tac wordsTheory.BITS_ZEROL_DIMINDEX
+   \\ fs [wordsTheory.w2w_n2w, wordsTheory.word_add_n2w,
+          wordsTheory.word_ls_n2w]
+QED
+
+val lem10 =
+  blastLib.BBLAST_CONV
+    ``v2w [c11; c10; c9; c8; c7; c6; c5; c4; c3; c2; c1; c0] : word12 ' 1``
+
+val lem11 =
+  asmLib.mk_blast_thm
+    ``(31 >< 12) (a - sw2sw ((11 >< 0) (a : word64) : word12))``
+
+val lem12 = asmLib.mk_blast_thm ``(11 >< 0) (c : word64) && ~0b10w``
+
+val lem12b =
+  blastLib.BBLAST_PROVE
+    ``0xFFFFFFFF80000000w <= c /\ c <= 0x7FFFF7FFw /\
+      ((1 >< 0) c = 0w : word64) ==>
+      (sw2sw (((31 >< 12) (c + -1w * sw2sw ((11 >< 0) c)) : word20) @@
+              (0w : word12)) +
+       sw2sw ((11 >< 0) c && ~2w) = c : word64)``
+
+Theorem mul_long[local]:
+  !a : word64 b : word64.
+    n2w ((w2n a * w2n b) DIV 18446744073709551616) =
+    (127 >< 64) (w2w a * w2w b : word128) : word64
+Proof
+  Cases
+  \\ Cases
+  \\ fs [wordsTheory.w2w_n2w, wordsTheory.word_mul_n2w,
+         wordsTheory.word_extract_n2w, bitTheory.BITS_THM]
+QED
+
+val riscv_overflow =
+  REWRITE_RULE
+    [blastLib.BBLAST_PROVE
+      ``!x y : word64.
+         ((word_msb x = word_msb y) /\ (word_msb x <> word_msb (x + y))) =
+         ((~(x ?? y) && (y ?? (x + y))) >>> 63 = 1w)``]
+    (Q.INST_TYPE [`:'a` |-> `:64`] integer_wordTheory.overflow)
+
+val riscv_sub_overflow =
+  SIMP_RULE (srw_ss())
+    [blastLib.BBLAST_PROVE
+      ``!x y : word64.
+         ((word_msb x <> word_msb y) /\ (word_msb x <> word_msb (x - y))) =
+         (((x ?? y) && ~(y ?? (x - y))) >>> 63 = 1w)``]
+    (Q.INST_TYPE [`:'a` |-> `:64`] integer_wordTheory.sub_overflow)
+
+Theorem ror[local]:
+  !w : word64 n. n < 64n ==> ((w << (64 - n) || w >>> n) = w #>> n)
+Proof
+  srw_tac [fcpLib.FCP_ss]
+    [wordsTheory.word_or_def, wordsTheory.word_ror, wordsTheory.word_bits_def,
+     wordsTheory.word_lsl_def, wordsTheory.word_lsr_def,
+     GSYM arithmeticTheory.NOT_LESS]
+  \\ `i - (64 - n) < 64` by decide_tac
+  \\ srw_tac [wordsLib.WORD_BIT_EQ_ss] []
+  \\ Cases_on `i + n < 64`
+  \\ simp []
+QED
+
+Theorem imm12_lem[local]:
+  !i. -2048 <= i /\ i <= 2047 ==>
+      0xFFFFFFFFFFFFF800w <= (i2w i : word64) /\ (i2w i : word64) <= 0x7FFw /\
+      (-2048 < i ==> 0xFFFFFFFFFFFFF800w < (i2w i : word64))
+Proof
+  rpt strip_tac
+  \\ `w2i (i2w i : word64) = i`
+       by (irule integer_wordTheory.w2i_i2w
+           \\ simp [integer_wordTheory.INT_MIN_def, integer_wordTheory.INT_MAX_def,
+                    wordsTheory.INT_MIN_def, wordsTheory.INT_MAX_def,
+                    wordsTheory.dimword_def, wordsTheory.dimindex_64]
+           \\ intLib.ARITH_TAC)
+  \\ `w2i (0xFFFFFFFFFFFFF800w : word64) = -2048 /\
+      w2i (0x7FFw : word64) = 2047` by EVAL_TAC
+  \\ asm_simp_tac bool_ss [integer_wordTheory.WORD_LEi, integer_wordTheory.WORD_LTi]
+  \\ intLib.ARITH_TAC
+QED
+
+(* appears to not be relevant
+
+Theorem DecodeAny_encode[simp]:
+   !encode x. DecodeAny (Word (encode x)) = Decode (encode x)
+Proof
+  rw [riscv_stepTheory.Decode_IMP_DecodeAny]
+QED
+
+*)
+
+(* some rewrites ---------------------------------------------------------- *)
+
+val encode_rwts =
+   let
+      open riscvTheory
+   in
+      [riscv_enc_def, riscv_ast_def, riscv_encode_def, riscv_const32_def,
+       riscv_bop_r_def, riscv_bop_i_def, riscv_sh_def, riscv_shv_def,
+       riscv_memop_def, Encode_def, opc_def, Itype_def, Rtype_def, Stype_def,
+       SBtype_def, Utype_def, UJtype_def]
+   end
+
+Theorem word_bit_0_add4[local]:
+    word_bit 0 (w +  4w:word64) = word_bit 0 w /\
+    word_bit 0 (w +  8w:word64) = word_bit 0 w /\
+    word_bit 0 (w + 12w:word64) = word_bit 0 w /\
+    word_bit 0 (w + 16w:word64) = word_bit 0 w /\
+    word_bit 0 (w + 20w:word64) = word_bit 0 w /\
+    word_bit 0 (w + 24w:word64) = word_bit 0 w /\
+    word_bit 0 (w + 28w:word64) = word_bit 0 w /\
+    word_bit 0 (w + 32w:word64) = word_bit 0 w
+Proof
+  blastLib.BBLAST_TAC
+QED
+
+val enc_rwts =
+  [riscv_config, riscv_asm_ok, asmTheory.arch_width_bits_def,
+   asmTheory.arch_wordsize_def, lem6, word_bit_0_add4, integer_wordTheory.i2w_pos] @
+  encode_rwts @ asmLib.asm_rwts
+
+val enc_ok_rwts =
+  [asmPropsTheory.enc_ok_def, riscv_config, riscv_asm_ok] @ encode_rwts
+
+(* some custom tactics ---------------------------------------------------- *)
+
+Theorem word_bit_0_lemmas:
+  !w. ¬word_bit 0 (0xFFFFFFFFFFFFFFFEw && w:word64) /\
+      word_bit 0 ((0xFFFFFFFFFFFFFFFEw && w:word64) + v) = word_bit 0 v
+Proof
+  blastLib.BBLAST_TAC
+QED
+
+local
+   val bool1 = utilsLib.rhsc o blastLib.BBLAST_CONV o fcpSyntax.mk_fcp_index
+   fun boolify n tm =
+      List.tabulate (n, fn i => bool1 (tm, numLib.term_of_int (n - 1 - i)))
+   val bytes = List.concat o List.map (boolify 8)
+   val is_riscv_next = #4 (HolKernel.syntax_fns1 "initRestrictedTarget" "restrictedNext")
+   val (_, _, dest_NextRISCV, is_NextRISCV) =
+      HolKernel.syntax_fns1 "initMachine" "restrictedNextRISCV"
+   val find_NextRISCV =
+      dest_NextRISCV o List.hd o HolKernel.find_terms is_NextRISCV
+   val s = ``s: riscv_state``
+   fun post_process th =
+     th |> REWRITE_RULE [word_bit_0_lemmas]
+   fun step the_state l =
+      let
+         val v = listSyntax.mk_list (bytes l, Type.bool)
+         val thm = Thm.INST [s |-> the_state] (restrictedStepLoaderLib.riscv_step v)
+      in
+         (Drule.DISCH_ALL thm |> post_process,
+          optionSyntax.dest_some (boolSyntax.rand (Thm.concl thm)))
+      end
+   val ms = ``ms: riscv_state``
+   fun new_state_var l =
+     Term.variant (List.concat (List.map Term.free_vars l)) ms
+   fun env (t, tm) =
+     let
+       (*
+       val (t, tm) = Option.valOf (find_env g)
+       *)
+       val etm = ``env ^t ^tm : riscv_state``
+     in
+       (fn (asl, g) =>
+         let
+           val pc = fst (pred_setSyntax.dest_in (hd asl))
+         in
+           subgoal
+           `(!a. a IN s1.mem_domain ==> ((^etm).MEM8 a = ms.MEM8 a)) /\
+            ((^etm).exception = ms.exception) /\
+            ((^etm).c_NextFetch (^etm).procID = ms.c_NextFetch ms.procID) /\
+            (((^etm).c_MCSR (^etm).procID).mstatus.VM =
+             (ms.c_MCSR ms.procID).mstatus.VM) /\
+            (((^etm).c_MCSR (^etm).procID).mcpuid.ArchBase =
+             (ms.c_MCSR ms.procID).mcpuid.ArchBase) /\
+            ((^etm).c_PC (^etm).procID = ^pc)`
+            >| [
+              asm_simp_tac (srw_ss()++bitstringLib.v2w_n2w_ss)
+               [combinTheory.UPDATE_APPLY, combinTheory.UPDATE_EQ, Abbr `^tm`],
+              all_tac
+            ]
+         end (asl, g)
+       , etm
+       )
+     end
+in
+   fun next_state_tac (asl, g) =
+     (let
+         val x as (pc, l, _, _) =
+            List.last
+              (List.mapPartial (Lib.total asmLib.dest_bytes_in_memory) asl)
+         val x_tm = asmLib.mk_bytes_in_memory x
+         val l = List.rev (fst (listSyntax.dest_list l))
+         val th = case Lib.total wordsSyntax.dest_word_add pc of
+                     SOME (_, w) => Thm.SPEC w bytes_in_memory_thm2
+                   | NONE => bytes_in_memory_thm
+         val (tac, the_state) =
+           case asmLib.find_env is_riscv_next g of
+              SOME x => env x
+            | NONE => (all_tac, ms)
+         val (step_thm, next_state) = step the_state l
+         val next_state_var = new_state_var (g::asl)
+      in
+         imp_res_tac th
+         \\ tac
+         \\ assume_tac step_thm
+         \\ qabbrev_tac `^next_state_var = ^next_state`
+         \\ NO_STRIP_REV_FULL_SIMP_TAC (srw_ss())
+              [lem1, lem4, lem5, lem10, lem11, bitstringTheory.word_lsb_v2w,
+               alignmentTheory.aligned_numeric, riscv_stepTheory.Skip]
+         \\ Tactical.PAT_X_ASSUM x_tm kall_tac
+         \\ SUBST1_TAC (Thm.SPEC the_state restrictedNext_def)
+         \\ byte_eq_tac
+         \\ NO_STRIP_REV_FULL_SIMP_TAC (srw_ss()++boolSimps.LET_ss) [lem1, lem5]
+      end
+      handle List.Empty => FAIL_TAC "next_state_tac: empty") (asl, g)
+end
+
+local
+  val thm = CONJ (DECIDE ``~(n < 32n) ==> (n - 32 + 32 = n)``)
+                 (DECIDE ``n <> 0n ==> (64 - n < 64)``)
+  val cond_rand_thms =
+    utilsLib.mk_cond_rand_thms
+       (utilsLib.accessor_fns ``: riscv_state`` @
+        utilsLib.accessor_fns ``: 64 asm_state``)
+  fun drop_var_asms_tac var =
+    let
+      val var = mk_var (var, ``:riscv_state``)
+    in
+      rpt (WEAKEN_TAC (fn tm => not (markerSyntax.is_abbrev tm) andalso
+                                free_in var tm))
+    end
+  val word_bit_0_mask = prove(
+    ``!w. ¬word_bit 0 (0xFFFFFFFFFFFFFFFEw && w:word64)``,
+    blastLib.BBLAST_TAC)
+in
+  fun state_tac asm (gs as (asl, _)) =
+    let
+      val l = List.map fst
+                (List.filter (fn (_, tm) => type_of tm = ``:riscv_state``)
+                  (List.mapPartial (Lib.total markerSyntax.dest_abbrev) asl))
+      val (l, x) = Lib.front_last l
+    in
+      (
+       NO_STRIP_FULL_SIMP_TAC (srw_ss())
+         [riscv_ok_def, asmPropsTheory.sym_target_state_rel, restricted_target_expanded,
+          riscv_config, lem2, cond_rand_thms,
+          alignmentTheory.aligned_numeric, set_sepTheory.fun2set_eq]
+       \\ (if not (List.null l) andalso
+              (asmLib.isJump asm orelse asmLib.isCall asm) then
+              (* Need to show that the register contents from the first
+                 instruction are aligned *)
+              NO_STRIP_FULL_SIMP_TAC (srw_ss()) [lem11]
+              \\ TRY (qpat_assum `aligned 2 (_ : word64) ==> (restrictedNextRISCV _ = _)`
+                (fn th => SUBGOAL_THEN (rand (rator (concl th)))
+                             (fn lth => NO_STRIP_FULL_SIMP_TAC std_ss [lth])
+                          >- (qpat_x_assum `aligned 2 _` mp_tac
+                              \\ asm_simp_tac
+                                   (srw_ss()++bitstringLib.v2w_n2w_ss)
+                                   [Abbr [QUOTE x],
+                                    combinTheory.APPLY_UPDATE_THM,
+                                    alignmentTheory.aligned_extract]
+                              \\ blastLib.BBLAST_TAC)))
+              \\ qpat_x_assum `~(0xFFFFFFFFFFF00000w <= c) \/ ~(c <= 0xFFFFFw)`
+                   kall_tac
+           else
+              all_tac)
+       \\ MAP_EVERY (fn s =>
+            drop_var_asms_tac s
+            \\ qunabbrev_tac [QUOTE s]
+            \\ asm_simp_tac (srw_ss()) [combinTheory.APPLY_UPDATE_THM,
+                                        alignmentTheory.aligned_numeric]
+            ) l
+       \\ NO_STRIP_FULL_SIMP_TAC std_ss [word_bit_0_mask]
+       \\ drop_var_asms_tac x
+       \\ qunabbrev_tac [QUOTE x]
+       \\ asm_simp_tac (srw_ss())
+            [combinTheory.APPLY_UPDATE_THM, alignmentTheory.aligned_numeric]
+       \\ CONV_TAC (Conv.DEPTH_CONV bitstringLib.v2w_n2w_CONV)
+       \\ asm_simp_tac (srw_ss()) [asmPropsTheory.all_pcs]
+       \\ (if asmLib.isAddCarry asm then
+             qabbrev_tac `r2 = ms.c_gpr ms.procID (n2w n0)`
+             \\ qabbrev_tac `r3 = ms.c_gpr ms.procID (n2w n1)`
+             \\ REPEAT strip_tac
+             \\ Cases_on `i = n2`
+             \\ asm_simp_tac std_ss [wordsTheory.WORD_LO_word_0, lem8]
+             >- (Cases_on `ms.c_gpr ms.procID (n2w n2) = 0w`
+                 \\ asm_simp_tac (srw_ss())
+                      [wordsTheory.WORD_LO_word_0, lem7, lem9]
+                 \\ blastLib.BBLAST_TAC)
+             \\ srw_tac [] [GSYM wordsTheory.word_add_n2w, lem7]
+           else
+             srw_tac []
+                [combinTheory.APPLY_UPDATE_THM, alignmentTheory.aligned_numeric,
+                 GSYM wordsTheory.word_mul_def, mul_long, riscv_overflow,
+                 riscv_sub_overflow, ror, lem11, thm]
+             \\ (if asmLib.isMem asm then
+                   full_simp_tac
+                      (srw_ss()++wordsLib.WORD_EXTRACT_ss++
+                       wordsLib.WORD_CANCEL_ss) []
+                 else
+                   NO_STRIP_FULL_SIMP_TAC std_ss
+                        [alignmentTheory.aligned_extract, lem12, lem12b]
+                   \\ blastLib.FULL_BBLAST_TAC))
+      ) gs
+    end
+end
+
+Theorem bytes_in_memory_IMP_all_pcs_MEM8[local]:
+  !env a xs m dm.
+   bytes_in_memory a xs m dm /\
+   (!(i:num) ms'. (∀a. a ∈ dm ⇒ (env i ms').MEM8 a = ms'.MEM8 a)) ==>
+   (!i ms'. (∀pc. pc ∈ all_pcs (LENGTH xs) a 0 ==> (env i ms').MEM8 pc = ms'.MEM8 pc))
+Proof
+  Induct_on `xs`
+ \\ rw [asmPropsTheory.all_pcs_def, miscTheory.bytes_in_memory_def]
+ \\ metis_tac []
+QED
+
+local
+   fun number_of_instructions asl =
+      case asmLib.strip_bytes_in_memory (List.last asl) of
+         SOME l => List.length l div 4
+       | NONE => raise mk_HOL_ERR "riscv_targetProofTheory" "number_of_instructions" ""
+   fun gen_next_tac (j, i) =
+     exists_tac (numLib.term_of_int (j - 1))
+     \\ simp [asmPropsTheory.asserts_eval,
+              asmPropsTheory.asserts2_eval, set_sepTheory.fun2set_eq,
+              asmPropsTheory.interference_ok_def, riscv_proj_def]
+     \\ NTAC 2 strip_tac
+     \\ drule bytes_in_memory_IMP_all_pcs_MEM8
+     \\ disch_then (qspec_then `env` mp_tac)
+     \\ simp []
+     \\ strip_tac
+     \\ NTAC i (split_bytes_in_memory_tac 4)
+     \\ NTAC j next_state_tac
+   fun next_tac_by_instructions gs =
+      let
+         val j = number_of_instructions (fst gs)
+      in
+         gen_next_tac (j, j - 1) gs
+      end
+   fun jc_next_tac_by_instructions gs =
+      let
+         val j = number_of_instructions (fst gs) - 1
+      in
+         gen_next_tac (j, j) gs
+      end
+   val (_, _, dest_riscv_enc, is_riscv_enc) =
+     HolKernel.syntax_fns1 "riscv_target" "riscv_enc"
+   fun get_asm tm = dest_riscv_enc (HolKernel.find_term is_riscv_enc tm)
+   val aligned_imp_bit_0 = prove(
+     ``aligned 2 w ==> ¬word_bit 0 (w:word64)``,
+     fs [alignmentTheory.aligned_bitwise_and] \\ blastLib.BBLAST_TAC)
+in
+  fun next_tac_with finish gs =
+    let
+      val asm = get_asm (snd gs)
+    in
+      NO_STRIP_FULL_SIMP_TAC (srw_ss()++boolSimps.LET_ss) enc_rwts
+      \\ next_tac_by_instructions
+      \\ imp_res_tac aligned_imp_bit_0
+      \\ NO_STRIP_FULL_SIMP_TAC (srw_ss()++boolSimps.LET_ss) enc_rwts
+      \\ finish asm
+    end gs
+  val next_tac = next_tac_with state_tac
+  fun jc_next_tac c =
+    NO_STRIP_FULL_SIMP_TAC (srw_ss()++boolSimps.LET_ss) enc_rwts
+    \\ Cases_on c
+    >| [next_tac_by_instructions, jc_next_tac_by_instructions]
+    \\ imp_res_tac aligned_imp_bit_0
+    \\ NO_STRIP_FULL_SIMP_TAC (srw_ss()++boolSimps.LET_ss) enc_rwts
+    \\ state_tac ``Inst Skip : asm``
+end
+
+(* -------------------------------------------------------------------------
+   riscv target_ok
+   ------------------------------------------------------------------------- *)
+
+Theorem length_riscv_encode[local]:
+  !i. LENGTH (riscv_encode i) = 4
+Proof
+  rw [riscv_encode_def]
+QED
+
+Theorem riscv_encode_not_nil[local]:
+  !i. riscv_encode i <> []
+Proof
+  simp_tac std_ss [length_riscv_encode, GSYM listTheory.LENGTH_NIL]
+QED
+
+val riscv_encoding = Q.prove (
+   `!i. let l = riscv_enc i in (LENGTH l MOD 4 = 0) /\ l <> []`,
+   strip_tac
+   \\ asmLib.asm_cases_tac `i`
+   \\ rw [riscv_enc_def, riscv_const32_def, riscv_encode_fail_def,
+          length_riscv_encode, riscv_encode_not_nil, riscv_ast_def]
+   \\ REPEAT CASE_TAC
+   \\ rw [length_riscv_encode, riscv_encode_not_nil]
+   )
+   |> SIMP_RULE (srw_ss()++boolSimps.LET_ss) [riscv_enc_def]
+
+Theorem offset_i2w_signed[local]:
+  -2147483648 ≤ i ∧ i ≤ 2147481599 ⇒ w2i (i2w i : word64) = i
+Proof
+  strip_tac
+  \\ irule integer_wordTheory.w2i_i2w
+  \\ simp [integer_wordTheory.INT_MIN_def, integer_wordTheory.INT_MAX_def,
+           wordsTheory.INT_MIN_def, wordsTheory.INT_MAX_def,
+           wordsTheory.dimword_def, wordsTheory.dimindex_64]
+  \\ intLib.ARITH_TAC
+QED
+
+Theorem restricted_target_ok[local]:
+  target_ok restrictedTarget
+Proof
+  rw ([asmPropsTheory.target_ok_def, asmPropsTheory.target_state_rel_def,
+        riscv_proj_def, restricted_target_expanded, riscv_config, riscv_ok_def,
+        set_sepTheory.fun2set_eq, riscv_encoding] @ enc_ok_rwts)
+   >| [Cases_on `-0x100000w <= (i2w w1 : word64) /\ (i2w w1 : word64) <= 0xFFFFFw`
+       \\ Cases_on `-0x100000w <= (i2w w2 : word64) /\ (i2w w2 : word64) <= 0xFFFFFw`,
+       Cases_on `-0xFFCw <= (i2w w1 : word64) /\ (i2w w1 : word64) <= 0xFFFw`
+       \\ Cases_on `-0xFFCw <= (i2w w2 : word64) /\ (i2w w2 : word64) <= 0xFFFw`
+       \\ Cases_on `ri`
+       \\ Cases_on `cmp`,
+       Cases_on `-0x100000w <= (i2w w1 : word64) /\ (i2w w1 : word64) <= 0xFFFFFw`
+       \\ Cases_on `-0x100000w <= (i2w w2 : word64) /\ (i2w w2 : word64) <= 0xFFFFFw`,
+       all_tac
+   ]
+   \\ full_simp_tac (srw_ss()++boolSimps.LET_ss)
+         (asmPropsTheory.offset_monotonic_def :: enc_ok_rwts)
+   \\ rw []
+   \\ CCONTR_TAC \\ fs []
+   \\ `w2i (i2w w1 : word64) = w1` by
+        (irule offset_i2w_signed \\ intLib.ARITH_TAC)
+   \\ `w2i (i2w w2 : word64) = w2` by
+        (irule offset_i2w_signed \\ intLib.ARITH_TAC)
+   \\ TRY (`(i2w w1 : word64) ≤ i2w w2` by
+        fs [integer_wordTheory.WORD_LEi, integer_wordTheory.word_0_w2i])
+   \\ TRY (`(i2w w2 : word64) ≤ i2w w1` by
+        fs [integer_wordTheory.WORD_LEi, integer_wordTheory.word_0_w2i])
+   \\ TRY (`0w ≤ (i2w w1 : word64)` by
+        fs [integer_wordTheory.WORD_LEi, integer_wordTheory.word_0_w2i])
+   \\ TRY (`0w ≤ (i2w w2 : word64)` by
+        fs [integer_wordTheory.WORD_LEi, integer_wordTheory.word_0_w2i])
+   \\ TRY (`(i2w w1 : word64) < 0w` by
+        fs [integer_wordTheory.WORD_LTi, integer_wordTheory.word_0_w2i])
+   \\ TRY (`(i2w w2 : word64) < 0w` by
+        fs [integer_wordTheory.WORD_LTi, integer_wordTheory.word_0_w2i])
+   \\ blastLib.FULL_BBLAST_TAC
+QED
+
+(* -------------------------------------------------------------------------
+   riscv encoder_correct
+   ------------------------------------------------------------------------- *)
+
+val print_tac = asmLib.print_tac "correct"
+
+Theorem word_extract_6:
+  w <+ 64w ⇒
+  ((5 >< 0) (w:word64)):word6 = (w2w w)
+Proof
+  blastLib.FULL_BBLAST_TAC
+QED
+
+Theorem signed_mul_sltu_64[local]:
+  (v2w [0w <+ ((a * b : word64) >> 63 ??
+                  (127 >< 64) ((sw2sw a : word128) * sw2sw b))] : word64) =
+  if w2i (a * b) <> w2i a * w2i b then 1w else 0w
+Proof
+  `!lo hi : word64. (lo ?? hi = 0w) <=> hi = lo` by
+    blastLib.BBLAST_TAC
+  \\ simp [wordsTheory.WORD_LO_word_0,
+           asmSignedTheory.signed_mul_high_64, bitstringTheory.v2w_thm]
+QED
+
+Theorem riscv_reg_read_64[local]:
+  target_state_rel restrictedTarget s ms ==>
+  !r. reg_ok r riscv_config ==>
+      s.regs r = ms.c_gpr ms.procID (n2w r)
+Proof
+  rw [asmPropsTheory.sym_target_state_rel, restricted_target_expanded,
+      asmTheory.reg_ok_def]
+QED
+
+Theorem restricted_encoder_correct:
+    encoder_correct restrictedTarget
+Proof
+   simp [asmPropsTheory.encoder_correct_def, restricted_target_ok]
+   \\ qabbrev_tac `state_rel = target_state_rel restrictedTarget`
+   \\ rw [restricted_target_expanded, riscv_config, asmSemTheory.asm_step_def]
+   \\ qunabbrev_tac `state_rel`
+   \\ Cases_on `i`
+   >- suspend "Inst"
+
+   >- suspend "Jump"
+   >- suspend "JumpCmp"
+
+   >- suspend "Call"
+   >- suspend "JumpReg"
+   >- suspend "Loc"
+QED
+
+Resume restricted_encoder_correct[Inst]:
+  Cases_on `i'`
+  >- suspend "Skip"
+  >- suspend "Const"
+  >- suspend "Arith"
+  >- suspend "Mem"
+  >- suspend "FP"
+QED
+
+Resume restricted_encoder_correct[Skip]:
+  print_tac "Skip"
+         \\ next_tac
+QED
+
+Resume restricted_encoder_correct[Const]:
+  print_tac "Const"
+  \\ qabbrev_tac `c = (i2w i : word64)`
+         \\ Cases_on `c = sw2sw ((11 >< 0) c : word12)`
+         >- next_tac
+         \\ Cases_on `((63 >< 32) c = 0w: word32) /\ ~c ' 31 \/
+                      ((63 >< 32) c = -1w: word32) /\ c ' 31`
+         >- (Cases_on `c ' 11` \\ next_tac)
+         \\ Cases_on `c ' 31`
+         \\ Cases_on `c ' 43`
+         \\ Cases_on `c ' 11`
+         \\ next_tac
+QED
+
+Resume restricted_encoder_correct[Arith]:
+  Cases_on `a`
+         >~ [`asm$IMul rd ra rb ro`] >- suspend "IMul"
+         >~ [`asm$IDiv rq rr ra rb`] >- suspend "IDiv"
+         >- suspend "Binop"
+         >- suspend "Shift"
+         >- suspend "Div"
+         >- suspend "LongMul"
+         >- suspend "LongDiv"
+         >- suspend "AddCarry"
+         >- suspend "AddOverflow"
+         >- suspend "SubOverflow"
+QED
+
+Resume restricted_encoder_correct[IMul]:
+  next_tac_with (fn _ => all_tac)
+  \\ assume_tac (Q.ISPECL [`ms.c_gpr ms.procID (n2w ra)`,
+                           `ms.c_gpr ms.procID (n2w rb)`]
+                          (GEN_ALL signed_mul_sltu_64))
+  \\ state_tac ``Inst (Arith (IMul rd ra rb ro)) : asm``
+  \\ qpat_x_assum `w2i _ * w2i _ <> w2i _ * w2i _`
+       (CONTR_TAC o SIMP_RULE std_ss [integerTheory.INT_MUL_COMM])
+QED
+
+Resume restricted_encoder_correct[IDiv]:
+  `ms.c_gpr ms.procID (n2w rb) <> 0w` by (
+    qpat_x_assum `~(asm _ _ _).failed` mp_tac
+    \\ simp (integer_wordTheory.w2i_eq_0 :: asmLib.asm_rwts)
+    \\ rpt strip_tac
+    \\ qpat_x_assum `w2i (i2w _) = _` kall_tac
+    \\ qpat_x_assum `bytes_in_memory _ _ _ _` kall_tac
+    \\ qpat_assum `target_state_rel restrictedTarget s1 ms`
+         (assume_tac o Q.SPEC `rb` o MATCH_MP riscv_reg_read_64)
+    \\ qpat_assum `asm_ok _ _`
+         (strip_assume_tac o REWRITE_RULE
+           [asmTheory.asm_ok_def, asmTheory.inst_ok_def, asmTheory.arith_ok_def])
+    \\ qpat_x_assum `reg_ok rb riscv_config ==> _` (fn eq =>
+         qpat_assum `reg_ok rb riscv_config` (mp_tac o MATCH_MP eq))
+    \\ asm_rewrite_tac [])
+  \\ Cases_on `rq = ra \/ rq = rb`
+  >- (
+    NO_STRIP_FULL_SIMP_TAC (srw_ss()++boolSimps.LET_ss) enc_rwts
+    \\ qpat_x_assum `w2i (i2w _) = _ /\ _` strip_assume_tac
+    \\ qpat_x_assum `w2i (i2w _) = _` kall_tac
+    \\ qpat_x_assum `rq = ra \/ rq = rb` kall_tac
+    \\ qexists_tac `2`
+    \\ simp [asmPropsTheory.asserts_eval, asmPropsTheory.asserts2_eval,
+             set_sepTheory.fun2set_eq, asmPropsTheory.interference_ok_def,
+             riscv_proj_def]
+    \\ NTAC 2 strip_tac
+    \\ drule bytes_in_memory_IMP_all_pcs_MEM8
+    \\ disch_then (qspec_then `env` mp_tac)
+    \\ simp []
+    \\ strip_tac
+    \\ NTAC 2 (split_bytes_in_memory_tac 4)
+    \\ next_state_tac
+    \\ next_state_tac
+    \\ next_state_tac
+    \\ qpat_assum `ms.c_gpr ms.procID (n2w rb) <> 0w` (fn nz =>
+         MAP_EVERY assume_tac
+           (map (fn th => MATCH_MP
+             (Q.ISPECL [`ms.c_gpr ms.procID (n2w ra)`,
+                        `ms.c_gpr ms.procID (n2w rb)`] th) nz)
+             [integer_wordTheory.word_quot, integer_wordTheory.word_rem]))
+    \\ state_tac ``Inst (Arith (IDiv rq rr ra rb)) : asm``)
+  \\ NO_STRIP_FULL_SIMP_TAC (srw_ss()++boolSimps.LET_ss) enc_rwts
+  \\ qpat_x_assum `w2i (i2w _) = _ /\ _` strip_assume_tac
+  \\ qpat_x_assum `w2i (i2w _) = _` kall_tac
+  \\ qexists_tac `1`
+  \\ simp_tac (srw_ss()++boolSimps.LET_ss)
+       [asmPropsTheory.asserts_eval, asmPropsTheory.asserts2_eval,
+        set_sepTheory.fun2set_eq, asmPropsTheory.interference_ok_def,
+        riscv_proj_def]
+  \\ NTAC 2 strip_tac
+  \\ qpat_assum `!i st. _ /\ _` (fn th =>
+       assume_tac (GENL (fst (strip_forall (concl th)))
+         (CONJUNCT1 (funpow 5 CONJUNCT2 (SPEC_ALL th)))))
+  \\ qpat_assum `bytes_in_memory _ _ _ _` (fn bytes =>
+    qpat_assum `!i st a. a IN s1.mem_domain ==> _`
+      (assume_tac o MATCH_MP bytes_in_memory_IMP_all_pcs_MEM8 o CONJ bytes))
+  \\ split_bytes_in_memory_tac 4
+  \\ next_state_tac
+  \\ next_state_tac
+  \\ qpat_assum `ms.c_gpr ms.procID (n2w rb) <> 0w` (fn nz =>
+       MAP_EVERY assume_tac
+         (map (fn th => MATCH_MP
+           (Q.ISPECL [`ms.c_gpr ms.procID (n2w ra)`,
+                      `ms.c_gpr ms.procID (n2w rb)`] th) nz)
+           [integer_wordTheory.word_quot, integer_wordTheory.word_rem]))
+  \\ state_tac ``Inst (Arith (IDiv rq rr ra rb)) : asm``
+QED
+
+Resume restricted_encoder_correct[Binop]:
+  print_tac "Binop"
+            \\ Cases_on `r`
+            >- (Cases_on `b` \\ next_tac)
+            \\ mp_tac (Q.SPEC `i` imm12_lem)
+            \\ impl_tac >- (Cases_on `b` \\ fs enc_rwts \\ intLib.ARITH_TAC)
+            \\ strip_tac
+            \\ Cases_on `b`
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[Shift]:
+  print_tac "Shift"
+            \\ reverse(Cases_on`r`)
+            >- (
+              `?nn. i = &nn` by (fs enc_rwts \\ qexists_tac `Num i` \\ intLib.ARITH_TAC)
+              \\ gvs []
+              \\ Cases_on `s`
+              \\ next_tac)
+            >- (
+              Cases_on`s = Ror`
+              >- (
+                rename1`Reg r`
+                \\ `w2n (s1.regs r) < 64` by fs enc_rwts
+                \\ `s1.regs r <+ 64w ∧ s1.regs r <=+ 64w` by (
+                    Cases_on`s1.regs r`
+                    \\ fs[wordsTheory.WORD_LO,wordsTheory.WORD_LS])
+                \\ `w2n (((5 >< 0) (s1.regs r)):word6) =
+                    w2n (s1.regs r)` by
+                      fs[word_extract_6,wordsTheory.w2w_def,wordsTheory.WORD_LO]
+                \\ `s1.regs n0 ⇄ w2n (s1.regs r) =
+                  s1.regs n0 <<~
+                  w2w ((5 >< 0) (-1w * s1.regs r + 64w)) ‖
+                  s1.regs n0 >>>~ w2w ((5 >< 0) (s1.regs r))` by (
+                  Cases_on`s1.regs r = 0w`
+                  >- simp[wordsTheory.w2w_def,bitstringTheory.word_ror_alt]>>
+                  simp[bitstringTheory.word_ror_alt,wordsTheory.w2w_def]>>
+                  qmatch_goalsub_abbrev_tac`_ << A || B = _ << C || D`>>
+                  qsuff_tac`A = C ∧ B = D` >- simp[]>>
+                  unabbrev_all_tac>>rw[]
+                  >- (
+                    dep_rewrite.DEP_REWRITE_TAC[word_extract_6]>>
+                    fs[wordsTheory.w2w_def,wordsTheory.WORD_LO]>>
+                    `-1w * (s1.regs r) + 64w =
+                      64w - s1.regs r` by blastLib.FULL_BBLAST_TAC>>
+                    pop_assum SUBST_ALL_TAC>>
+                    dep_rewrite.DEP_REWRITE_TAC[wordsTheory.word_sub_w2n]>>
+                    simp[]>>
+                    Cases_on`s1.regs r`>>gvs[])>>
+                  Cases_on`s1.regs r`>>gvs[])
+                \\ next_tac)
+              >- (
+                rename1`Reg r`
+                \\ `w2n (s1.regs r) < 64` by fs enc_rwts
+                \\ `w2n (s1.regs r) < dimword (:64)` by fs[]
+                \\ `(n2w (w2n (s1.regs r)) :word64) = s1.regs r` by
+                  fs[wordsTheory.n2w_w2n]
+                \\ imp_res_tac wordsTheory.word_shift_bv
+                \\ rpt (pop_assum (qspec_then `s1.regs n0` mp_tac))
+                \\ pop_assum SUBST_ALL_TAC
+                \\ rw[]
+                \\ `s1.regs r <+ 64w` by (
+                    Cases_on`s1.regs r`
+                    \\ fs[wordsTheory.WORD_LO])
+                \\ `(w2w ((5 >< 0) (s1.regs r):word6)):word64 =
+                    n2w (w2n (s1.regs r))` by
+                    simp[word_extract_6,wordsTheory.w2w_def,wordsTheory.WORD_LO]
+                \\ Cases_on `s`
+                \\ next_tac))
+QED
+
+Resume restricted_encoder_correct[Div]:
+  print_tac "Div"
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[LongMul]:
+  print_tac "LongMul"
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[LongDiv]:
+  print_tac "LongDiv"
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[AddCarry]:
+  print_tac "AddCarry"
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[AddOverflow]:
+  print_tac "AddOverflow"
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[SubOverflow]:
+  print_tac "SubOverflow"
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[Mem]:
+  print_tac "Mem"
+            \\ Cases_on `a`
+            \\ mp_tac (Q.SPEC `i` imm12_lem)
+            \\ impl_tac
+            >- (fs (riscv_config :: asmLib.asm_ok_rwts) \\ intLib.ARITH_TAC)
+            \\ strip_tac
+            \\ Cases_on `m`
+            \\ next_tac
+QED
+
+Resume restricted_encoder_correct[FP]:
+  print_tac "FP"
+  \\ Cases_on `f`
+  \\ next_tac
+QED
+
+Theorem aligned_i2w[local]:
+  4 int_divides i ⇒ aligned 2 (i2w i : word64)
+Proof
+  rw [integerTheory.INT_DIVIDES]
+  \\ simp [GSYM integer_wordTheory.word_i2w_mul, integer_wordTheory.i2w_pos,
+           alignmentTheory.aligned_bitwise_and]
+  \\ blastLib.BBLAST_TAC
+QED
+
+Theorem branch_offset_i2w[local]:
+  (-2147483648 ≤ i ∧ i ≤ 2147481599 ∧ 4 int_divides i ⇒
+    0xFFFFFFFF80000000w ≤ (i2w i : word64) ∧
+    (i2w i : word64) ≤ 0x7FFFF7FFw ∧ aligned 2 (i2w i : word64)) ∧
+  (-1048568 ≤ i ∧ i ≤ 1048579 ∧ 4 int_divides i ⇒
+    0xFFFFFFFFFFF00008w ≤ (i2w i : word64) ∧
+    (i2w i : word64) ≤ 0x100003w ∧ aligned 2 (i2w i : word64))
+Proof
+  conj_tac \\ strip_tac
+  \\ `w2i (i2w i : word64) = i` by
+       (irule offset_i2w_signed \\ intLib.ARITH_TAC)
+  \\ fs ([integer_wordTheory.WORD_LEi, aligned_i2w] @
+         map EVAL [``w2i (0xFFFFFFFF80000000w : word64)``,
+                   ``w2i (0x7FFFF7FFw : word64)``,
+                   ``w2i (0xFFFFFFFFFFF00008w : word64)``,
+                   ``w2i (0x100003w : word64)``])
+QED
+
+Resume restricted_encoder_correct[Jump]:
+  qmatch_goalsub_rename_tac `riscv_enc (Jump off)`
+  \\ qabbrev_tac `c = (i2w off : word64)`
+  \\ `0xFFFFFFFF80000000w ≤ c ∧ c ≤ 0x7FFFF7FFw ∧ aligned 2 c` by
+       (qunabbrev_tac `c`
+        \\ irule (CONJUNCT1 branch_offset_i2w)
+        \\ fs (riscv_config :: asmLib.asm_ok_rwts))
+  \\   print_tac "Jump"
+      \\ Cases_on `-0x100000w <= c /\ c <= 0xFFFFFw`
+      \\ next_tac
+QED
+
+Resume restricted_encoder_correct[JumpCmp]:
+  qmatch_goalsub_rename_tac `riscv_enc (JumpCmp c n r off)`
+  \\ qabbrev_tac `c0 = (i2w off : word64)`
+  \\ `0xFFFFFFFFFFF00008w ≤ c0 ∧ c0 ≤ 0x100003w ∧ aligned 2 c0` by
+       (qunabbrev_tac `c0`
+        \\ irule (CONJUNCT2 branch_offset_i2w)
+        \\ fs (riscv_config :: asmLib.asm_ok_rwts))
+  \\ print_tac "JumpCmp"
+  \\ Cases_on `-0xFFCw <= c0 /\ c0 <= 0xFFFw`
+  >~ [`~(-0xFFCw <= _ /\ _ <= 0xFFFw)`] >- suspend "CmpLarge"
+  >~ [`-0xFFCw <= _ /\ _ <= 0xFFFw`] >- suspend "CmpSmall"
+QED
+
+Resume restricted_encoder_correct[CmpSmall]:
+  Cases_on `r`
+  >~ [`asm$Reg _`] >- suspend "CmpSmallReg"
+  >~ [`asm$Imm _`] >- suspend "CmpSmallImm"
+QED
+
+Resume restricted_encoder_correct[CmpSmallReg]:
+  Cases_on `c`
+  >| [suspend "CmpSmallRegEqual",
+      suspend "CmpSmallRegLower",
+      suspend "CmpSmallRegLess",
+      suspend "CmpSmallRegTest",
+      suspend "CmpSmallRegNotEqual",
+      suspend "CmpSmallRegNotLower",
+      suspend "CmpSmallRegNotLess",
+      suspend "CmpSmallRegNotTest"]
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegEqual]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegLower]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegLess]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegTest]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegNotEqual]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegNotLower]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegNotLess]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallRegNotTest]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImm]:
+  mp_tac (Q.SPEC `i` imm12_lem)
+  \\ impl_tac >- (fs enc_rwts \\ intLib.ARITH_TAC)
+  \\ strip_tac
+  \\ Cases_on `c`
+  >| [suspend "CmpSmallImmEqual",
+      suspend "CmpSmallImmLower",
+      suspend "CmpSmallImmLess",
+      suspend "CmpSmallImmTest",
+      suspend "CmpSmallImmNotEqual",
+      suspend "CmpSmallImmNotLower",
+      suspend "CmpSmallImmNotLess",
+      suspend "CmpSmallImmNotTest"]
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmEqual]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmLower]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmLess]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmTest]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmNotEqual]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmNotLower]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmNotLess]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpSmallImmNotTest]:
+  next_tac
+QED
+
+Resume restricted_encoder_correct[CmpLarge]:
+  Cases_on `r`
+  >~ [`asm$Reg _`] >- suspend "CmpLargeReg"
+  >~ [`asm$Imm _`] >- suspend "CmpLargeImm"
+QED
+
+Resume restricted_encoder_correct[CmpLargeReg]:
+  Cases_on `c`
+  >| [suspend "CmpLargeRegEqual",
+      suspend "CmpLargeRegLower",
+      suspend "CmpLargeRegLess",
+      suspend "CmpLargeRegTest",
+      suspend "CmpLargeRegNotEqual",
+      suspend "CmpLargeRegNotLower",
+      suspend "CmpLargeRegNotLess",
+      suspend "CmpLargeRegNotTest"]
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegEqual]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) = ms.c_gpr ms.procID (n2w n')`
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegLower]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) <+ ms.c_gpr ms.procID (n2w n')`
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegLess]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) < ms.c_gpr ms.procID (n2w n')`
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegTest]:
+  jc_next_tac `(ms.c_gpr ms.procID (n2w n) &&
+                      ms.c_gpr ms.procID (n2w n')) = 0w`
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegNotEqual]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) <> ms.c_gpr ms.procID (n2w n')`
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegNotLower]:
+  jc_next_tac `~(ms.c_gpr ms.procID (n2w n) <+
+                       ms.c_gpr ms.procID (n2w n'))`
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegNotLess]:
+  jc_next_tac `~(ms.c_gpr ms.procID (n2w n) <
+                       ms.c_gpr ms.procID (n2w n'))`
+QED
+
+Resume restricted_encoder_correct[CmpLargeRegNotTest]:
+  jc_next_tac `(ms.c_gpr ms.procID (n2w n) &&
+                      ms.c_gpr ms.procID (n2w n')) <> 0w`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImm]:
+  mp_tac (Q.SPEC `i` imm12_lem)
+  \\ impl_tac >- (fs enc_rwts \\ intLib.ARITH_TAC)
+  \\ strip_tac
+  \\ Cases_on `c`
+  >| [suspend "CmpLargeImmEqual",
+      suspend "CmpLargeImmLower",
+      suspend "CmpLargeImmLess",
+      suspend "CmpLargeImmTest",
+      suspend "CmpLargeImmNotEqual",
+      suspend "CmpLargeImmNotLower",
+      suspend "CmpLargeImmNotLess",
+      suspend "CmpLargeImmNotTest"]
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmEqual]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) = (i2w i : word64)`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmLower]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) <+ (i2w i : word64)`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmLess]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) < (i2w i : word64)`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmTest]:
+  jc_next_tac `(ms.c_gpr ms.procID (n2w n) && (i2w i : word64)) = 0w`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmNotEqual]:
+  jc_next_tac `ms.c_gpr ms.procID (n2w n) <> (i2w i : word64)`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmNotLower]:
+  jc_next_tac `~(ms.c_gpr ms.procID (n2w n) <+ (i2w i : word64))`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmNotLess]:
+  jc_next_tac `~(ms.c_gpr ms.procID (n2w n) < (i2w i : word64))`
+QED
+
+Resume restricted_encoder_correct[CmpLargeImmNotTest]:
+  jc_next_tac `(ms.c_gpr ms.procID (n2w n) && (i2w i : word64)) <> 0w`
+QED
+
+Resume restricted_encoder_correct[Call]:
+  qmatch_goalsub_rename_tac `riscv_enc (Call off)`
+  \\ qabbrev_tac `c = (i2w off : word64)`
+  \\ `0xFFFFFFFF80000000w ≤ c ∧ c ≤ 0x7FFFF7FFw ∧ aligned 2 c` by
+       (qunabbrev_tac `c`
+        \\ irule (CONJUNCT1 branch_offset_i2w)
+        \\ fs (riscv_config :: asmLib.asm_ok_rwts))
+  \\   print_tac "Call"
+      \\ Cases_on `-0x100000w <= c /\ c <= 0xFFFFFw`
+      \\ next_tac
+QED
+
+Resume restricted_encoder_correct[JumpReg]:
+  print_tac "JumpReg"
+      \\ next_tac
+QED
+
+Resume restricted_encoder_correct[Loc]:
+  qmatch_goalsub_rename_tac `riscv_enc (Loc n off)`
+  \\ qabbrev_tac `c = (i2w off : word64)`
+  \\ `0xFFFFFFFF80000000w ≤ c ∧ c ≤ 0x7FFFF7FFw ∧ aligned 2 c` by
+       (qunabbrev_tac `c`
+        \\ irule (CONJUNCT1 branch_offset_i2w)
+        \\ fs (riscv_config :: asmLib.asm_ok_rwts))
+  \\   print_tac "Loc"
+      \\ next_tac
+QED
+
+Finalise restricted_encoder_correct;
+
+val _ = if null(hyp restricted_encoder_correct)
+  then ignore(check_thm restricted_encoder_correct)
+  else failwith "restricted encoder correctness assumptions";
