@@ -62,7 +62,7 @@ Proof
      `globalsWords`,`(stackStart-sourceBase) DIV 8`,
      `(n2w sourceBase:word64) + bytes_in_word * n2w stack_remove$max_stack_alloc`,
      `(n2w ramEnd:word64) - bytes_in_word * n2w stack_remove$max_stack_alloc`,
-     `620:num`,`0:num`,`«main»`] baseline_compile_rule) >>
+     `3788:num`,`0:num`,`«main»`] baseline_compile_rule) >>
   simp [compiler_target_config,prepared_fixed_source_behaviour,
         semanticsPropsTheory.extend_with_resource_limit'_def] >>
   impl_tac >-

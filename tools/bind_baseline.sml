@@ -13,8 +13,12 @@ val bytes = listSyntax.mk_list
 val _ = new_theory "submissionLiterals";
 val submittedBytes_def = new_definition ("submittedBytes_def",
   mk_eq (mk_var ("submittedBytes",``:word8 list``),bytes));
+val score_text = valOf (OS.Process.getEnv "HOL_INIT_E_SCORE");
+val score_term = if score_text = "infinity" then ``initParams$Infinity``
+  else mk_comb (prim_mk_const {Thy="initParams",Name="Finite"},
+    numSyntax.mk_numeral (Arbnum.fromString score_text));
 val submittedScore_def = new_definition ("submittedScore_def",
-  mk_eq (mk_var ("submittedScore",``:initParams$budget``),``initParams$Infinity``));
+  mk_eq (mk_var ("submittedScore",``:initParams$budget``),score_term));
 (* These premises must match the verifier-created literals, so export them as
    requests for those fixed definitions, never as candidate definitions. *)
 val _ = Thm.delete_proof submittedBytes_def;
@@ -36,7 +40,12 @@ val bytes_eq = TRANS rom_raw literal_encoding;
 val score_eq = SYM submittedScore_def;
 val certificate_const = prim_mk_const {Thy="initChallenge",Name="Certificate"};
 val conclusion_eq = MK_COMB (AP_TERM certificate_const bytes_eq,score_eq);
-val result = EQ_MP conclusion_eq initBaselineCertificateTheory.baseline_certificate;
+val candidate_certificate = initBaselineCertificateTheory.baseline_certificate;
+val candidate_expected = list_mk_comb (certificate_const,
+  [``initBaselineRom$baselineRom``,score_term]);
+val _ = if aconv (concl candidate_certificate) candidate_expected then ()
+  else raise Fail "candidate certificate differs from frozen score or expected ROM constant";
+val result = EQ_MP conclusion_eq candidate_certificate;
 val expected = list_mk_comb (certificate_const,
   [lhs(concl submittedBytes_def),lhs(concl submittedScore_def)]);
 val _ = if null(hyp result) andalso aconv (concl result) expected andalso

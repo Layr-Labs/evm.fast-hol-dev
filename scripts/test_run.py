@@ -2,61 +2,37 @@
 from __future__ import annotations
 
 import contextlib
-import errno
 import hashlib
 import io
 import itertools
 import json
-import lzma
 from pathlib import Path
-import stat
-import struct
+import re
 import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
-import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 
-ROM = b"\x13\x00\x00\x00"
-ARTICLE = b"1\n2\nnil\n" * 1000
 RUNNER = {"name": "blacksmith-1", "cpuModel": "AMD EPYC 9454P 48-Core Processor", "cpuCount": 32}
 # The fake clock and rusage advance by 3600.27 s wall and 5388.04 s CPU per verifier run.
 TIMING = {"verifySeconds": 3600.3, "verifyCpuSeconds": 5388.0, "verifyRunner": RUNNER}
-# What scripts/run.py wrote before verifier timing was recorded.
-LEGACY = {
-    "infinity": '{"score": 9007199254740991, "metrics": {"claim": "infinity", "finite": false, "prover": "hol", '
-                f'"verification": "article", "romSha256": "{"r" * 64}", "proofSha256": "{"p" * 64}", '
-                '"contractCommit": "abc123"}}\n',
-    1234: '{"score": 1234, "metrics": {"claim": 1234, "finite": true, "prover": "hol", "verification": "article", '
-          f'"romSha256": "{"r" * 64}", "proofSha256": "{"p" * 64}", "contractCommit": "abc123"}}}}\n',
-}
 
 
-def zip_bytes(entries, compression=zipfile.ZIP_DEFLATED) -> bytearray:
-    """entries: (name, data, unix mode or None)."""
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", compression) as archive:
-        for name, data, mode in entries:
-            info = zipfile.ZipInfo(name)
-            info.compress_type = compression
-            if mode is not None:
-                info.external_attr = mode << 16
-            archive.writestr(info, data)
-    return bytearray(buffer.getvalue())
+class FakeProcess:
+    def __init__(self, stdout, returncode, timeout=False):
+        self.stdout, self.returncode, self.timeout, self.pid = stdout, returncode, timeout, 4242
 
-
-def patch_entry(data: bytearray, fmt: str, local_offset: int, central_offset: int, value) -> bytearray:
-    """Sets one field in the first entry's local header and its central directory record."""
-    struct.pack_into(fmt, data, local_offset, value)
-    struct.pack_into(fmt, data, data.find(b"PK\x01\x02") + central_offset, value)
-    return data
+    def communicate(self, timeout=None):
+        if self.timeout and timeout is not None:
+            raise subprocess.TimeoutExpired("verify.py", timeout)
+        return self.stdout, None
 
 
 class Harness(unittest.TestCase):
@@ -66,10 +42,6 @@ class Harness(unittest.TestCase):
         self.root = Path(temporary.name)
         (self.root / "scripts").mkdir()
         self.candidate = self.root / "candidate"
-        self.candidate.mkdir()
-        (self.candidate / "rom.bin").write_bytes(ROM)
-        (self.candidate / "claim.json").write_text('{"K":"infinity"}')
-        (self.root / "benchmark.json").write_bytes((REPO / "benchmark.json").read_bytes())
         cpuinfo = self.root / "cpuinfo"
         cpuinfo.write_text(f"processor\t: 0\nmodel name\t: {RUNNER['cpuModel']}\n\nprocessor\t: 1\nmodel name\t: x\n")
         usage = itertools.cycle([SimpleNamespace(ru_utime=10.0, ru_stime=2.0),
@@ -93,53 +65,83 @@ class Harness(unittest.TestCase):
         lines = [line for line in self.stderr.getvalue().splitlines() if line.startswith("Verifier timing: ")]
         return [json.loads(line.removeprefix("Verifier timing: ")) for line in lines]
 
-    def verifier(self, report, returncode=0, stdout=None):
-        completed = subprocess.CompletedProcess([], returncode, stdout=stdout if stdout is not None else json.dumps(report))
+    def verifier(self, *lines, returncode=0, stdout=None, timeout=False):
+        text = stdout if stdout is not None else "".join(json.dumps(line) + "\n" for line in lines)
 
         def fake(command, **kwargs):
+            self.command = command
             self.assertTrue(command[1].endswith("verifier/verify.py"))
-            self.assertEqual(command[command.index("--timeout") + 1:command.index("--timeout") + 4],
-                             [str(run.TIMEOUT_SECONDS), "--memory-gib", str(run.MEMORY_GIB)])
-            submission = Path(command[command.index("--local") + 1])
-            self.submitted = {p.name: p.read_bytes() for p in submission.iterdir()}
-            return completed
-        return patch.object(run.subprocess, "run", fake)
+            self.assertTrue(kwargs["start_new_session"])
+            return FakeProcess(text, returncode, timeout)
+        return patch.object(run.subprocess, "Popen", fake)
 
-    def run_main(self, report, **kwargs):
-        with self.verifier(report, **kwargs), patch.object(run.subprocess, "check_output", return_value="abc123\n"):
+    def run_main(self, *lines, **kwargs):
+        with self.verifier(*lines, **kwargs), patch.object(run.subprocess, "check_output", return_value="abc123\n"):
             run.main()
         return json.loads(self.score.read_text())
 
-    def report(self, K):
+    def fails(self, *lines, **kwargs):
+        self.score.write_text("stale")
+        with self.assertRaises(SystemExit) as raised:
+            self.run_main(*lines, **kwargs)
+        self.assertFalse(self.score.exists())
+        return str(raised.exception.code)
+
+    @staticmethod
+    def replay(K):
         return {"status": "verified", "K": K, "rom_bytes": 4, "rom_sha256": "r" * 64, "proof_sha256": "p" * 64}
 
+    @staticmethod
+    def pipeline(K, status="verified"):
+        return {"status": status, "verifier_exit": 0 if status == "verified" else 1, "rom_bytes": 4,
+                "certificate_bytes": 1000, "source_bytes": 10, "score": K, "work": "/w"}
+
+    def verified(self, K):
+        return self.run_main(self.replay(K), self.pipeline(K))
+
+    def test_verifier_command_and_limits(self):
+        self.verified("infinity")
+        option = {name: self.command[self.command.index(name) + 1] for name in
+                  ("--hol", "--author-hol", "--work", "--source-timeout", "--source-memory-gib", "--timeout",
+                   "--memory-gib")}
+        self.assertEqual(self.command[2], str(self.candidate))
+        self.assertEqual(option, {"--hol": str(self.root / "work" / "HOL"),
+                                  "--author-hol": str(self.root / "work" / "HOL-export"),
+                                  "--work": option["--work"], "--source-timeout": "36000",
+                                  "--source-memory-gib": "64", "--timeout": "21600", "--memory-gib": "112"})
+        work = Path(option["--work"])
+        self.assertEqual(work.parent, self.root / "work" / "yukon")
+        self.assertTrue(work.parent.is_dir())
+        self.assertFalse(work.exists())  # verify.py requires a new directory
+
+    def test_limits_fit_upstream_run_and_job(self):
+        self.assertGreaterEqual(run.SOURCE_TIMEOUT_SECONDS, 28_800)
+        self.assertGreaterEqual(run.TIMEOUT_SECONDS, 21_600)
+        self.assertLess(39_177, run.TOTAL_SECONDS)
+        workflow = (REPO / ".github" / "workflows" / "benchmark.yml").read_text()
+        job_minutes = int(re.search(r"timeout-minutes: (\d+)", workflow)[1])
+        self.assertLess(job_minutes, 24 * 60)
+        self.assertLessEqual(run.TOTAL_SECONDS + 3600, job_minutes * 60)
+        self.assertLessEqual(run.MEMORY_GIB, 120)  # 128 GB runner
+
     def test_infinity_scores_the_exact_infinity_pair(self):
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        result = self.run_main(self.report("infinity"))
+        result = self.verified("infinity")
         self.assertEqual((result["score"], result["scoreExact"]), (1e300, "1" + "0" * 300))
         self.assertEqual(result["metrics"], {"claim": "infinity", "finite": False, "prover": "hol",
-                                             "verification": "article", "romSha256": "r" * 64,
+                                             "verification": "source", "romSha256": "r" * 64,
                                              "proofSha256": "p" * 64, "contractCommit": "abc123", **TIMING})
-        self.assertEqual(self.submitted["certificate.art"], ARTICLE)
 
-    def test_score_carries_minutes_and_timing_is_appended(self):
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        # 3600.3 s rounds up to 61 minutes, below K's digits.
-        for K, legacy in LEGACY.items():
-            self.run_main(self.report(K))
-            text = self.score.read_text()
-            score = '1e+300, "scoreExact": "1' + "0" * 300 + '"' if K == "infinity" else \
-                f'{K * 10_000 + 61}, "scoreExact": "{K * 10_000 + 61}"'
-            expected = legacy.replace(f'"score": {2**53 - 1 if K == "infinity" else K},', f'"score": {score},', 1)
-            self.assertEqual(text, expected[:-len("}}\n")] + ", " + json.dumps(TIMING)[1:] + "}\n")
-            self.assertTrue(text.startswith(f'{{"score": {score}, "metrics": '))
-            result = json.loads(text)
-            self.assertEqual(result["score"], float(result["scoreExact"]))
+    def test_score_file_layout(self):
+        self.verified(1234)
+        self.assertEqual(self.score.read_text(), json.dumps({
+            "score": 12_340_061, "scoreExact": "12340061",
+            "metrics": {"claim": 1234, "finite": True, "prover": "hol", "verification": "source",
+                        "romSha256": "r" * 64, "proofSha256": "p" * 64, "contractCommit": "abc123",
+                        **TIMING}}) + "\n")
 
     def test_verify_seconds_is_positive_float(self):
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
         with patch.object(run.time, "monotonic", side_effect=[5.0, 5.26]):
-            metrics = self.run_main(self.report(7))["metrics"]
+            metrics = self.verified(7)["metrics"]
         self.assertIsInstance(metrics["verifySeconds"], float)
         self.assertEqual(metrics["verifySeconds"], 0.3)
         self.assertIsInstance(metrics["verifyCpuSeconds"], float)
@@ -151,236 +153,81 @@ class Harness(unittest.TestCase):
             self.assertEqual(run.runner(), {"cpuCount": 32})
 
     def test_finite_k_is_scored_with_its_minutes(self):
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
         largest = run.time_score.LARGEST_K
         for K in [0, 123, 2**53 - 1, 10**121, largest]:
-            result = self.run_main(self.report(K))
+            result = self.verified(K)
             self.assertEqual((result["scoreExact"], result["metrics"]["claim"], result["metrics"]["finite"]),
                              (str(K * 10_000 + 61), K, True))
             self.assertEqual(result["score"], float(result["scoreExact"]))
-        self.assertEqual(self.run_main(self.report(123))["score"], 1_230_061)
-        self.assertEqual(self.run_main(self.report(10**121))["score"], 1e125)
+        self.assertEqual(self.verified(123)["score"], 1_230_061)
+        self.assertEqual(self.verified(10**121)["score"], 1e125)
 
     def test_k_beyond_299_digits_fails_closed(self):
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
         for K in [run.time_score.LARGEST_K + 1, 10**300, -1, True, "7", 1.5]:
-            self.score.write_text("stale")
-            with self.assertRaises(SystemExit):
-                self.run_main(self.report(K))
-            self.assertFalse(self.score.exists())
+            self.fails(self.replay(K), self.pipeline(K))
 
     def test_rejection_deletes_stale_score(self):
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        for report, kwargs in [({"status": "rejected", "reason": "x"}, {"returncode": 1}),
-                               ({"status": "incomplete"}, {"returncode": 2}),
-                               (None, {"stdout": "not json"}),
-                               (None, {"stdout": "[]"}),
-                               (self.report("infinity"), {"returncode": 1})]:
-            self.score.write_text("stale")
-            with self.assertRaises(SystemExit):
-                self.run_main(report, **kwargs)
-            self.assertFalse(self.score.exists())
-        self.assertEqual(self.timing_logged(), [TIMING] * 5)
+        cases = [((self.replay("infinity"), self.pipeline("infinity", "rejected")), {"returncode": 1}),
+                 (({"status": "rejected", "reason": "modified trusted file"},), {"returncode": 1}),
+                 (({"status": "source_rejected", "stage": "export", "exit": 1, "work": "/w"},), {"returncode": 1}),
+                 ((), {"stdout": "not json"}),
+                 ((), {"stdout": "[]"}),
+                 ((self.replay("infinity"), self.pipeline("infinity")), {"returncode": 1}),
+                 ((self.pipeline("infinity"),), {}),
+                 ((self.replay(5), self.pipeline(6)), {}),
+                 (({"status": "rejected"}, self.pipeline(5)), {})]
+        for lines, kwargs in cases:
+            self.fails(*lines, **kwargs)
+        self.assertEqual(self.timing_logged(), [TIMING] * len(cases))
 
-    def test_xz_certificate_is_expanded(self):
-        (self.candidate / "certificate.art.xz").write_bytes(lzma.compress(ARTICLE))
-        self.run_main(self.report("infinity"))
-        self.assertEqual(self.submitted["certificate.art"], ARTICLE)
-        self.assertEqual(set(self.submitted), {"rom.bin", "claim.json", "certificate.art"})
-
-    def invalid(self):
+    def test_failed_stage_log_tail_is_printed(self):
+        def fake(command, **kwargs):
+            work = Path(command[command.index("--work") + 1])
+            work.mkdir()
+            (work / "export.log").write_text("".join(f"line {n}\n" for n in range(100)) + "author stage exit=1\n")
+            return FakeProcess(json.dumps({"status": "source_rejected", "stage": "export", "exit": 1}), 1)
         self.score.write_text("stale")
-        with self.assertRaises(SystemExit), self.verifier(self.report(1)):
+        with patch.object(run.subprocess, "Popen", fake), self.assertRaises(SystemExit) as raised:
             run.main()
+        self.assertIn("source_rejected", str(raised.exception.code))
+        logged = self.stderr.getvalue()
+        self.assertIn("Last lines of the export stage log:", logged)
+        self.assertIn("author stage exit=1", logged)
+        self.assertNotIn("line 50\n", logged)
         self.assertFalse(self.score.exists())
-        self.assertEqual(self.timing_logged(), [])
 
-    def test_disk_full_is_reported_as_such(self):
-        class FullDisk:
-            def __init__(self, handle):
-                self.handle = handle
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *exc):
-                self.handle.close()
-
-            def write(self, data):
-                raise OSError(errno.ENOSPC, "No space left on device")
-
-        real_open = Path.open
-
-        def open_full(path, mode="r", *args, **kwargs):
-            handle = real_open(path, mode, *args, **kwargs)
-            return FullDisk(handle) if "x" in mode and path.name == "certificate.art" else handle
-
-        for name, data in (("certificate.art", ARTICLE), ("certificate.art.zip", bytes(zip_bytes([("certificate.art", ARTICLE, None)])))):
-            for other in run.CERTIFICATES:
-                (self.candidate / other).unlink(missing_ok=True)
-            (self.candidate / name).write_bytes(data)
-            self.score.write_text("stale")
-            with patch.object(run.Path, "open", open_full), self.verifier(self.report(1)):
-                with self.assertRaises(SystemExit) as raised:
-                    run.main()
-            self.assertIn("out of disk space", str(raised.exception.code))
-            self.assertNotIn("Invalid candidate", str(raised.exception.code))
-            self.assertFalse(self.score.exists())
-
-    def test_xz_bomb_truncation_and_trailing_data_rejected(self):
-        packed = lzma.compress(ARTICLE)
-        for data, limit in [(packed, len(ARTICLE) - 1), (packed[:-8], 1 << 30), (packed + b"x", 1 << 30),
-                            (b"not xz", 1 << 30)]:
-            (self.candidate / "certificate.art.xz").write_bytes(data)
-            with patch.object(run.verify, "PROOF_LIMIT", limit):
-                self.invalid()
-
-    def write_zip(self, data):
-        (self.candidate / "certificate.art.zip").write_bytes(bytes(data))
-
-    def test_zip_certificate_is_expanded(self):
-        # zip(1) records S_IFREG|0644, Python's zipfile 0o600 with no type, some tools nothing.
-        for compression, mode in ((zipfile.ZIP_DEFLATED, stat.S_IFREG | 0o644), (zipfile.ZIP_STORED, 0o600),
-                                  (zipfile.ZIP_DEFLATED, 0)):
-            self.write_zip(zip_bytes([("certificate.art", ARTICLE, mode)], compression))
-            self.run_main(self.report("infinity"))
-            self.assertEqual(self.submitted["certificate.art"], ARTICLE)
-            self.assertEqual(set(self.submitted), {"rom.bin", "claim.json", "certificate.art"})
-
-    def test_zip_must_hold_only_certificate_art(self):
-        for entries in ([("certificate.art", ARTICLE, None), ("extra", b"x", None)],
-                        [("proof.art", ARTICLE, None)],
-                        [("certificate.art/", b"", stat.S_IFDIR | 0o755)],
-                        [("certificate.art", b"/etc/passwd", stat.S_IFLNK | 0o777)],
-                        [("certificate.art", b"", stat.S_IFIFO | 0o644)],
-                        [("../certificate.art", ARTICLE, None)]):
-            self.write_zip(zip_bytes(entries))
-            self.invalid()
-
-    def test_zip_encryption_and_other_methods_rejected(self):
-        self.write_zip(patch_entry(zip_bytes([("certificate.art", ARTICLE, None)]), "<H", 6, 8, 0x1))
-        self.invalid()
-        for method in (9, 12, 14):  # Deflate64, bzip2, lzma
-            self.write_zip(patch_entry(zip_bytes([("certificate.art", ARTICLE, None)]), "<H", 8, 10, method))
-            self.invalid()
-
-    def test_zip_bombs_rejected(self):
-        packed = zip_bytes([("certificate.art", ARTICLE, None)])
-        self.write_zip(packed)
-        with patch.object(run.verify, "PROOF_LIMIT", len(ARTICLE) - 1):
-            self.invalid()  # declared size over the limit
-        # Declares 10 bytes but inflates to the whole article: output stops at the declared size
-        # and the CRC check fails, and a limit below the real size is never exceeded.
-        self.write_zip(patch_entry(bytearray(packed), "<I", 22, 24, 10))
-        with patch.object(run.verify, "PROOF_LIMIT", 100):
-            self.invalid()
-        self.invalid()
-
-    def test_zip_truncation_and_crc_mismatch_rejected(self):
-        packed = zip_bytes([("certificate.art", ARTICLE, None)])
-        for data in (packed[:-10], packed[:len(packed) // 2], b"not a zip at all"):
-            self.write_zip(data)
-            self.invalid()
-        crc = struct.unpack_from("<I", packed, 14)[0]
-        self.write_zip(patch_entry(bytearray(packed), "<I", 14, 16, crc ^ 1))
-        self.invalid()
-
-    def test_zip_entry_count_checked_before_parsing(self):
-        packed = zip_bytes([("certificate.art", ARTICLE, None)])
-        end = packed.rfind(b"PK\x05\x06")
-        struct.pack_into("<HH", packed, end + 8, 50000, 50000)
-        self.write_zip(packed)
-        with patch.object(run.zipfile, "ZipFile", side_effect=AssertionError("parsed")):
-            self.invalid()
-        many = zip_bytes([(f"f{index}", b"", None) for index in range(65536)], zipfile.ZIP_STORED)
-        self.assertNotEqual(many.rfind(b"PK\x06\x06"), -1)  # zip64 end record
-        with open(self.root / "many.zip", "wb") as handle:
-            handle.write(many)
-        with run.open_regular(self.root / "many.zip") as handle:
-            self.assertEqual(run.zip_entry_count(handle), 65536)
-
-    def test_only_one_certificate_form(self):
-        self.write_zip(zip_bytes([("certificate.art", ARTICLE, None)]))
-        (self.candidate / "certificate.art.xz").write_bytes(lzma.compress(ARTICLE))
-        self.invalid()
-        (self.candidate / "certificate.art.xz").unlink()
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        self.invalid()
-
-    def test_bad_candidate_layouts_rejected(self):
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        (self.candidate / "extra.sml").write_text("")
-        self.invalid()
-        (self.candidate / "extra.sml").unlink()
-        (self.candidate / "certificate.art.xz").write_bytes(lzma.compress(ARTICLE))
-        self.invalid()
-        (self.candidate / "certificate.art.xz").unlink()
-        (self.candidate / "claim.json").unlink()
-        self.invalid()
-        (self.candidate / "claim.json").symlink_to(self.root / "scripts")
-        self.invalid()
-
-    def test_symlinked_certificate_rejected(self):
-        outside = self.root / "outside.art"
-        outside.write_bytes(ARTICLE)
-        (self.candidate / "certificate.art").symlink_to(outside)
-        self.invalid()
-
-    def pointer(self, name, data):
-        pointer = {"bytes": len(data), "path": f"candidate/{name}", "sha256": hashlib.sha256(data).hexdigest(),
-                   "slot": "certificate", "yukonLargeFile": 1}
-        (self.candidate / f"{name}.yukon-ref.json").write_bytes(run.large_files.canonical(pointer))
-
-    def test_missing_certificate_rejected(self):
-        self.invalid()
-
-    def test_pointer_with_its_file_is_used_and_not_submitted(self):
-        packed = bytes(zip_bytes([("certificate.art", ARTICLE, None)]))
-        self.write_zip(packed)
-        self.pointer("certificate.art.zip", packed)
-        self.run_main(self.report("infinity"))
-        self.assertEqual(set(self.submitted), {"rom.bin", "claim.json", "certificate.art"})
-        self.assertEqual(self.submitted["certificate.art"], ARTICLE)
-
-    def test_only_pointers_for_declared_slot_paths_are_skipped(self):
-        manifest = json.loads((self.root / "benchmark.json").read_text())
-        manifest["tracks"][0]["largeFiles"][0]["paths"].remove("candidate/certificate.art")
-        (self.root / "benchmark.json").write_text(json.dumps(manifest))
-        (self.candidate / "certificate.art.zip").write_bytes(bytes(zip_bytes([("certificate.art", ARTICLE, None)])))
-        (self.candidate / "certificate.art.yukon-ref.json").write_text("{}")
-        with self.assertRaises(SystemExit) as raised, self.verifier(self.report(1)):
-            run.main()
-        self.assertIn("unexpected entry candidate/certificate.art.yukon-ref.json", str(raised.exception.code))
-
-    def test_pointer_without_its_file_or_with_another_file_rejected(self):
-        packed = bytes(zip_bytes([("certificate.art", ARTICLE, None)]))
-        self.pointer("certificate.art.zip", packed)
-        with self.assertRaises(SystemExit) as raised, self.verifier(self.report(1)):
-            run.main()
-        self.assertIn("yukon setup --track hol", str(raised.exception))
-        self.write_zip(zip_bytes([("certificate.art", ARTICLE + b"x", None)]))
-        self.invalid()  # file differs from its pointer
-        (self.candidate / "certificate.art.zip").unlink()
-        (self.candidate / "certificate.art").write_bytes(ARTICLE)
-        self.invalid()  # a different format than the pointer names
-        (self.candidate / "certificate.art").unlink()
-        self.write_zip(packed)
-        (self.candidate / "certificate.art.zip.yukon-ref.json").write_text('{"bytes": 1}')
-        self.invalid()  # not a canonical pointer
+    def test_timeout_stops_the_verifier_session(self):
+        with patch.object(run.os, "killpg") as killpg:
+            message = self.fails(self.replay(1), self.pipeline(1), timeout=True)
+        killpg.assert_called_once_with(4242, run.signal.SIGKILL)
+        self.assertIn("failed", message)
 
 
-class BaselinePins(unittest.TestCase):
-    def test_baseline_pointer_names_upstream_zip(self):
-        compression = json.loads((REPO / "artifacts" / "baseline" / "certificate-compression.json").read_text())
-        manifest = json.loads((REPO / "artifacts" / "baseline" / "manifest.json").read_text())
-        verification = json.loads((REPO / "artifacts" / "baseline" / "verification.json").read_text())
-        self.assertEqual(run.large_files.pointers(REPO), [{
-            "bytes": compression["zip_bytes"], "path": "candidate/certificate.art.zip",
-            "sha256": compression["zip_sha256"], "slot": "certificate", "yukonLargeFile": 1}])
-        self.assertEqual(compression["sha256"], verification["result"]["proof_sha256"])
-        self.assertEqual(hashlib.sha256((REPO / "candidate" / "rom.bin").read_bytes()).hexdigest(),
-                         manifest["files"]["rom.bin"]["sha256"])
-        self.assertEqual(json.loads((REPO / "candidate" / "claim.json").read_text()), {"K": "infinity"})
+class Repository(unittest.TestCase):
+    def test_baseline_candidate_is_upstream_accepted_envelope(self):
+        manifest = json.loads((REPO / "artifacts" / "software-guest" / "source-submission-manifest.json").read_text())
+        candidate = REPO / "candidate"
+        files = {path.relative_to(candidate).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                 for path in candidate.rglob("*") if path.is_file()}
+        self.assertEqual(files, manifest["file_sha256"])
+        self.assertEqual(manifest["score"], "infinity")
+        self.assertEqual((candidate / "rom.bin").read_bytes(),
+                         (REPO / "artifacts" / "software-guest" / "rom.bin").read_bytes())
+        self.assertEqual(json.loads((candidate / "claim.json").read_text()), {"K": "infinity"})
+
+    def test_manifest_paths(self):
+        track, = json.loads((REPO / "benchmark.json").read_text())["tracks"]
+        self.assertNotIn("largeFiles", track)
+        for path in track["editablePaths"]:
+            self.assertTrue((REPO / path).exists(), path)
+            self.assertFalse(Path(track["scorePath"]).is_relative_to(path))
+
+    def test_warm_cache_key_matches_benchmark(self):
+        workflows = REPO / ".github" / "workflows"
+        keys = [re.findall(r"^ +key: (hol-verifier-.*)$", (workflows / name).read_text(), re.M)
+                for name in ("benchmark.yml", "warm-cache.yml")]
+        self.assertEqual(len(keys[0]), 1)
+        self.assertEqual(keys[0], keys[1])
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ open wordsTheory initParamsTheory initBootstrapTheory initBaselineRomTheory
   initBootstrapStateTheory;
 val _ = Feedback.set_trace "TheoryPP.include_html_docs" 0;
 Theorem data_rom_elements:
-  !i. i < 36936 ==>
+  !i. i < 36848 ==>
     EL i baselineInitData = EL (bootDataRom-initialPc+i) baselineRom
 Proof
   rpt strip_tac >>
@@ -17,7 +17,7 @@ Proof
   simp [EL_DROP,ADD_COMM]
 QED
 Theorem baseline_initial_data_byte:
-  i < 36936 ==>
+  i < 36848 ==>
   initialMemory baselineSubmission input (n2w (bootDataRom+i)) = EL i baselineInitData
 Proof
   strip_tac >>
@@ -31,7 +31,7 @@ Proof
   fs [bootDataRom_def,initialPc_def]
 QED
 Theorem baseline_final_bitmap_byte:
-  24 <= i /\ i < 36936 ==>
+  24 <= i /\ i < 36848 ==>
   (bootFinalState (baselineInitialAsm input)).mem (n2w (bootDataRam+i)) =
   EL i baselineInitData
 Proof

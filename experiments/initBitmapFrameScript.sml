@@ -19,7 +19,7 @@ Proof
   simp [bootstrapStoredBytes_def]
 QED
 Theorem bootstrap_final_bitmap_bytes:
-  ~s.be /\ s.pc = n2w initParams$initialPc /\ 24 <= i /\ i < 36936 ==>
+  ~s.be /\ s.pc = n2w initParams$initialPc /\ 24 <= i /\ i < 36848 ==>
   (bootFinalState s).mem (n2w (bootDataRam+i)) =
   s.mem (n2w (bootDataRom+i))
 Proof

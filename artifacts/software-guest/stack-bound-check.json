@@ -1,0 +1,14 @@
+{
+  "scope": "Concrete standard-HOL stack certificate; full challenge Certificate and independent replay pending",
+  "status": "passed",
+  "theorem": "initStackCertificate.checked_optimized_stack_bound",
+  "bound_words": 7480,
+  "bound_bytes": 59840,
+  "ranking_entries": 814,
+  "source_hashes": {
+    "experiments/initStackRanksDataScript.sml": "3755bce64682430cdecbc597ce14f5b274c4a96926bdcd9e0906fea209e248e8",
+    "experiments/initStackCertificateScript.sml": "bbf5134b64e1301396ef6fe0d58f973b22aa040b000e8f477947e945c5daf19a",
+    "experiments/initStackRankScript.sml": "3b7a42865ce402af71b25f11d4387a2f0e892c258caebdf7b90df3c82df12330",
+    "experiments/initStackInputScript.sml": "12d0d08522e23aa2e712847d06b50011e13e1e06f579bbe2db11699faa2cedea"
+  }
+}

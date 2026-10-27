@@ -1,0 +1,4 @@
+Checking the fixed challenge and freezing submission literals
+Replaying the exact fixed Certificate
+{"status": "verified", "K": "infinity", "rom_bytes": 1028080, "rom_sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b", "proof_sha256": "185db7655ddcb5e7c32f6b3894ab4a61a19566e4e7624144876918024ce57067"}
+{"status": "verified", "verifier_exit": 0, "rom_bytes": 1028080, "certificate_bytes": 4446682307, "source_bytes": 2017652, "score": "infinity", "work": "/var/tmp/hol-software-public-verification-v6/source-run"}

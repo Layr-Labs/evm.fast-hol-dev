@@ -1,0 +1,21 @@
+RUN focused-build ["/usr/bin/python3", "tools/build.py", "--hol", "/home/zksecurity/cv_compute/HOL-init-e", "--build-dir", "/var/tmp/hol-software-public-verification-v6/probe-build", "--jobs", "2", "--maxheap-mib", "24576", "initBaselineRomTheory.uo"]
+PASSED focused-build
+RUN focused-export ["/usr/bin/python3", "tools/export_baseline.py", "--hol", "/home/zksecurity/cv_compute/HOL-init-e", "--author-hol", "/home/zksecurity/cv_compute/HOL-init-e-export", "--build-dir", "/var/tmp/hol-software-public-verification-v6/probe-build", "--output", "/var/tmp/hol-software-public-verification-v6/focused-export", "--only", "initBaselineRom", "--maxheap-mib", "40960"]
+PASSED focused-export
+RUN prepare-verifier ["/usr/bin/python3", "tools/prepare_verifier.py", "--hol", "/home/zksecurity/cv_compute/HOL-init-e"]
+PASSED prepare-verifier
+RUN boundary-tests ["/usr/bin/python3", "test_verify.py"]
+PASSED boundary-tests
+RUN source-envelope-tests ["/usr/bin/python3", "test_source_submission.py"]
+PASSED source-envelope-tests
+RUN export-driver-tests ["/usr/bin/python3", "test_export_baseline.py"]
+PASSED export-driver-tests
+RUN isolation ["/usr/bin/python3", "verifier/test_isolation.py"]
+PASSED isolation
+RUN cli-negative ["/usr/bin/python3", "verifier/test_cli_replay.py"]
+PASSED cli-negative
+RUN kernel-negative ["/usr/bin/python3", "/var/tmp/hol-software-public-verification-v6/kernel-negative.py"]
+PASSED kernel-negative
+RUN public-verifier ["/usr/bin/time", "-v", "-o", "/var/tmp/hol-software-public-verification-v6/resources.txt", "/usr/bin/python3", "verifier/verify.py", "/var/tmp/hol-software-source-candidate-v4", "--hol", "/home/zksecurity/cv_compute/HOL-init-e", "--author-hol", "/home/zksecurity/cv_compute/HOL-init-e-export", "--work", "/var/tmp/hol-software-public-verification-v6/source-run", "--source-timeout", "28800", "--source-memory-gib", "64", "--timeout", "21600", "--memory-gib", "112"]
+PASSED public-verifier
+HOL_SOFTWARE_PUBLIC_PIPELINE_DONE passed

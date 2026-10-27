@@ -10,7 +10,7 @@ open wordsTheory targetSemTheory asmPropsTheory initCompilerMachineTheory
 val _ = Feedback.set_trace "TheoryPP.include_html_docs" 0;
 Theorem baseline_good_init_state:
   target_state_rel restrictedTarget (bootFinalState (baselineInitialAsm input)) ms ==>
-  good_init_state (compilerMachineConfig baselineSubmission) ms compiledBytes 620
+  good_init_state (compilerMachineConfig baselineSubmission) ms compiledBytes 3788
     (bootFinalState (baselineInitialAsm input)) (baselinePackedMemory input)
     (heapStackDomain UNION bitmapDomain) submissionSharedDomain
 Proof

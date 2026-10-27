@@ -18,6 +18,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exports', type=Path, default=ROOT/'.export-baseline')
     parser.add_argument('--binding', type=Path)
+    parser.add_argument('--claim', type=Path,
+                        help='sanitized score claim; defaults to binding metadata')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     exports = args.exports.resolve()
@@ -36,20 +38,25 @@ def main():
             parser.error('changed author article: '+name)
         articles.append(article)
     info = json.loads((binding/'binding.json').read_text())
-    if info['K'] != 'infinity' or info['rom_sha256'] != digest(binding/'rom.bin') or \
-       info['article_sha256'] != digest(binding/'binding.art'):
+    claim = json.loads(args.claim.read_text()) if args.claim else {'K': info['K']}
+    if (not isinstance(claim, dict) or set(claim) != {'K'} or
+            (claim['K'] != 'infinity' and
+             (type(claim['K']) is not int or claim['K'] < 0)) or
+            info['K'] != claim['K'] or
+            info['rom_sha256'] != digest(binding/'rom.bin') or
+            info['article_sha256'] != digest(binding/'binding.art')):
         parser.error('changed or unsupported literal binding')
     articles.append(binding/'binding.art')
     output = args.output.resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     shutil.copyfile(binding/'rom.bin', output/'rom.bin')
-    (output/'claim.json').write_text('{"K":"infinity"}\n')
+    (output/'claim.json').write_text(json.dumps(claim, separators=(',', ':'))+'\n')
     with (output/'certificate.art').open('wb') as target:
         for article in articles:
             with article.open('rb') as source:
                 shutil.copyfileobj(source, target, length=1024*1024)
     print(f'Assembled {len(articles)} articles, {(output/"certificate.art").stat().st_size} bytes.')
-    print(f'Not yet verified. Run verifier/verify.py --local {output} --progress')
+    print('Internal diagnostic package only; participant submissions use the source verifier.')
 
 
 if __name__ == '__main__':

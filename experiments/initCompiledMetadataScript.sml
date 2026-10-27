@@ -23,6 +23,17 @@ val _ = cv_auto_trans compiledFirst_def;
 val _ = save_closed "compiled_ffi_count" (cv_eval ``LENGTH compiledFfiNames``);
 val _ = save_closed "compiled_mmio_count" (cv_eval ``LENGTH compiledMmio``);
 val _ = save_closed "compiled_first" (cv_eval ``compiledFirst``);
+(* Check the actual compiled dispatch metadata, not just the source text. *)
+Definition compiledExternalCallsTerminal_def:
+  compiledExternalCallsTerminal = EVERY
+    (\nm. case nm of
+      ExtCall name => name = «halt» \/ name = «trap»
+    | SharedMem _ => T) compiledFfiNames
+End
+val _ = cv_auto_trans compiledExternalCallsTerminal_def;
+val _ = save_closed "compiled_external_calls_terminal"
+  (REWRITE_RULE [compiledExternalCallsTerminal_def]
+    (EQT_ELIM (cv_eval ``compiledExternalCallsTerminal``)));
 Definition compiledOffsetsNonnegative_def:
   compiledOffsetsNonnegative = EVERY
     (\rec : lab_to_target$shmem_info_num. 0 <= rec.addr_off) compiledMmio

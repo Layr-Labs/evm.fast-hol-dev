@@ -37,7 +37,7 @@ End
 val _ = cv_trans inputStart_def;
 
 Definition inputSize_def:
-  inputSize : num = 0x08000000
+  inputSize : num = 0x40000000
 End
 val _ = cv_trans inputSize_def;
 
@@ -52,7 +52,7 @@ End
 val _ = cv_trans outputStart_def;
 
 Definition outputSize_def:
-  outputSize : num = 0x10000
+  outputSize : num = 0x1000
 End
 val _ = cv_trans outputSize_def;
 
@@ -82,17 +82,17 @@ End
 val _ = cv_trans sourceBase_def;
 
 Definition scratchStart_def:
-  scratchStart : num = sourceBase + 4096
+  scratchStart : num = 0xa0411000
 End
 val _ = cv_trans scratchStart_def;
 
 Definition scratchEnd_def:
-  scratchEnd : num = 0xa1c00000
+  scratchEnd : num = 0xa0fff000
 End
 val _ = cv_trans scratchEnd_def;
 
 Definition heapStart_def:
-  heapStart : num = scratchEnd
+  heapStart : num = sourceBase
 End
 val _ = cv_trans heapStart_def;
 
@@ -107,7 +107,7 @@ End
 val _ = cv_trans stackStart_def;
 
 Definition globalsWords_def:
-  globalsWords : num = 93
+  globalsWords : num = 67
 End
 val _ = cv_trans globalsWords_def;
 
@@ -123,9 +123,9 @@ val _ = cv_trans gasLimit_def;
 
 Theorem regions_disjoint:
   inputEnd <= initialPc /\ initialPc + codeSizeLimit <= ramStart /\
-  ramStart <= outputStart /\ outputEnd <= sourceBase /\ sourceBase < scratchStart /\
+  ramStart <= outputStart /\ outputEnd <= scratchStart /\
   scratchStart < scratchEnd /\ scratchEnd <= heapStart /\
-  heapStart < heapEnd /\ heapEnd + globalsWords * 8 = stackStart /\ stackStart < ramEnd
+  heapStart < heapEnd /\ heapEnd < stackStart /\ stackStart < ramEnd
 Proof
   CONV_TAC cv_eval
 QED

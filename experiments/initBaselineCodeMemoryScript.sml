@@ -22,7 +22,7 @@ Proof
   ACCEPT_TAC baseline_native_installed
 QED
 Theorem baseline_code_buffer_domain:
-  n < 620 ==>
+  n < 3788 ==>
   n2w (n+LENGTH compiledBytes) + n2w baselineNativePc IN programDomain baselineSubmission /\
   n2w (n+LENGTH compiledBytes) + n2w baselineNativePc NOTIN
     heapStackDomain UNION bitmapDomain
@@ -38,7 +38,7 @@ Proof
       bootDataEnd_def,w2n_n2w,dimword_64] >> decide_tac
 QED
 Theorem baseline_code_buffer_installed:
-  n < 620 ==>
+  n < 3788 ==>
   n2w (n+LENGTH compiledBytes) + (bootFinalState (baselineInitialAsm input)).pc IN
     (bootFinalState (baselineInitialAsm input)).mem_domain /\
   n2w (n+LENGTH compiledBytes) + (bootFinalState (baselineInitialAsm input)).pc NOTIN
@@ -58,7 +58,7 @@ Proof
   metis_tac [baseline_native_constants,baseline_native_installed]
 QED
 Theorem baseline_code_buffer_nonwrapping:
-  620 + LENGTH compiledBytes < dimword (:64)
+  3788 + LENGTH compiledBytes < dimword (:64)
 Proof
   simp [compiled_byte_count,dimword_64]
 QED

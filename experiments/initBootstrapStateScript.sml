@@ -9,7 +9,7 @@ Definition bootFinalState_def:
 End
 Theorem bootstrap_final_effect:
   s.pc = n2w initialPc /\ ~s.be /\ ~s.failed /\
-  (!i. i < 36936 ==>
+  (!i. i < 36848 ==>
     n2w (bootDataRom+i) IN s.mem_domain /\
     n2w (bootDataRam+i) IN s.mem_domain) /\
   (!i. i < 40 ==> n2w (0xa1000000+i) IN s.mem_domain) ==>
@@ -30,7 +30,7 @@ Proof
   simp [bootFinalState_def,bootstrap_suffix_memory] >>
   irule bootstrap_suffix_success >>
   fs [bootDataRam_def] >>
-  metis_tac [DECIDE ``(i:num) < 24 ==> i < 36936``]
+  metis_tac [DECIDE ``(i:num) < 24 ==> i < 36848``]
 QED
 val _ = if null (hyp bootstrap_final_effect)
   then ignore (check_thm bootstrap_final_effect)

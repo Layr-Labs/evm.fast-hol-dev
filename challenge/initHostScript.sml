@@ -1,5 +1,5 @@
 (* Host framing and shared-memory oracle from Guest/Model and
-   InitE/SourceSemantics. Accelerator semantics remain to be instantiated. *)
+   InitE/SourceSemantics. The software guest has only terminal external calls. *)
 Theory initHost
 Ancestors initParams ffi
 Libs preamble wordsLib
@@ -21,9 +21,9 @@ Definition hostInputBytes_def:
 End
 Definition guestHostMemory_def:
   guestHostMemory input (address : word64) =
-    if inputStart <= w2n address /\ w2n address < inputEnd then
-      let offset = w2n address - inputStart;
-          bytes = hostInputBytes input in
+    let bytes = hostInputBytes input in
+    if inputStart <= w2n address /\ w2n address < w2n (n2w inputStart + n2w (LENGTH bytes) : word64) then
+      let offset = w2n address - inputStart in
       SOME (if offset < LENGTH bytes then EL offset bytes else 0w)
     else if outputStart <= w2n address /\ w2n address < outputEnd then SOME 0w
     else NONE
@@ -45,7 +45,7 @@ Definition writeHost_def:
       else host current
 End
 Definition terminalOracle_def:
-  terminalOracle accelerator name (host : host_memory) configuration bytes =
+  terminalOracle name (host : host_memory) configuration bytes =
     case name of
       SharedMem MappedRead =>
         let width = sharedWidth configuration;
@@ -60,18 +60,25 @@ Definition terminalOracle_def:
         if EVERY (\i. IS_SOME (host (address + n2w i))) (COUNT_LIST count) then
           Oracle_return (writeHost host address values) bytes
         else Oracle_final FFI_failed
-    | ExtCall name =>
-        if name = «halt» \/ name = «trap» then Oracle_final FFI_failed
-        else case accelerator name configuration bytes of
-          NONE => Oracle_final FFI_failed
-        | SOME result => Oracle_return host result
+    | ExtCall name => Oracle_final FFI_failed
 End
 
 Theorem terminal_calls:
-  terminalOracle accelerator (ExtCall «halt») host conf bytes = Oracle_final FFI_failed /\
-  terminalOracle accelerator (ExtCall «trap») host conf bytes = Oracle_final FFI_failed
+  terminalOracle (ExtCall «halt») host conf bytes = Oracle_final FFI_failed /\
+  terminalOracle (ExtCall «trap») host conf bytes = Oracle_final FFI_failed
 Proof
   simp [terminalOracle_def]
+QED
+Theorem all_external_calls_terminal:
+  terminalOracle (ExtCall name) host conf bytes = Oracle_final FFI_failed
+Proof
+  simp [terminalOracle_def]
+QED
+Theorem input_extent_regression:
+  guestHostMemory [] (n2w (inputStart + 15)) = SOME 0w /\
+  guestHostMemory [] (n2w (inputStart + 16)) = NONE
+Proof
+  EVAL_TAC
 QED
 Theorem host_framing_regression:
   TAKE 18 (hostInputBytes [171w;205w]) =

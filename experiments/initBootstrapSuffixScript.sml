@@ -41,10 +41,10 @@ val failure_rules = map (fn instr =>
     ``(bootAfter ^instr (s:64 asm_state)).failed``)) instructions;
 Definition bootstrapStoredBytes_def:
   bootstrapStoredBytes bytesAt =
-    littleStore 8 0xa1000020w 0x800de000w
-    (littleStore 8 0xa1000018w 0x800ddd94w
-    (littleStore 8 0xa1000010w 0xa0029048w
-    (littleStore 8 0xa1000008w 0xa0029048w
+    littleStore 8 0xa1000020w 0x800f1000w
+    (littleStore 8 0xa1000018w 0x800f0134w
+    (littleStore 8 0xa1000010w 0xa0028ff0w
+    (littleStore 8 0xa1000008w 0xa0028ff0w
     (littleStore 8 0xa1000000w 0xa0020018w
     (littleStore 8 0xa0020010w 0x7e0000000w
     (littleStore 8 0xa0020008w 0x7df000000w

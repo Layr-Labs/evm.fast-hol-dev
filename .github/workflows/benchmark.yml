@@ -1,36 +1,33 @@
 name: Benchmark
 on:
   workflow_dispatch:
-    inputs:
-      yukon_large_files:
-        description: Set by Yukon. The API and OIDC audience that serve this run's large candidate files.
-        type: string
-        required: false
-        default: ""
 permissions:
   contents: read
-  # GitHub OIDC token for Yukon's large-file download route; no storage credentials are stored here.
-  id-token: write
 jobs:
   benchmark:
-    # 128 GB host: the baseline replay peaked at 90.4 GiB child RSS under a 112 GiB cap.
-    # The verifier never executes candidate ML and needs no sandbox, so it runs on the host.
+    # 128 GB host: upstream's accepted run peaked at 90.25 GiB RSS, with strict replay under a
+    # 112 GiB cap and author stages under 64 GiB each. Candidate proof scripts run only inside the
+    # verifier's Bubblewrap sandbox, so the verifier runs on the runner itself.
     runs-on: blacksmith-32vcpu-ubuntu-2404
-    # Replay is capped at 360 minutes by scripts/run.py (the baseline took 150 minutes upstream).
-    # A cold setup builds Poly/ML, HOL4 and the CakeML compiler theories with at most 3 workers;
-    # upstream records no total for that build. Stay under the 24-hour job token.
+    # scripts/run.py caps the verifier at 1,260 minutes; upstream's accepted run took 653 minutes.
+    # A cold setup builds Poly/ML, two HOL4 trees and the baseline theories, so official runs rely
+    # on the cache that warm-cache.yml saves on main. Stay under the 24-hour job token.
     timeout-minutes: 1380
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Fetch large files
-        env:
-          YUKON_LARGE_FILES: ${{ inputs.yukon_large_files }}
-        run: python3 scripts/large_files.py fetch
       - name: Runner resources
-        run: nproc; free -g; df -h "${GITHUB_WORKSPACE}"
+        run: nproc; free -g; df -h "${GITHUB_WORKSPACE}"; uname -r; command -v python3
+      # Ubuntu 24.04's AppArmor policy denies unprivileged user namespaces, which the verifier's
+      # author sandbox (and setup's check of it) creates through bwrap. The runner is an ephemeral single-job VM, and the
+      # Bubblewrap sandbox itself is unchanged.
+      - name: Allow Bubblewrap user namespaces
+        run: |
+          if [[ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         id: cache
         with:
@@ -39,6 +36,8 @@ jobs:
             work/polyml.rev
             work/HOL
             work/HOL.rev
+            work/HOL-export
+            work/HOL-export.rev
             .build
           key: hol-verifier-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('provenance.json', 'holproject.toml', '.gitmodules', 'challenge/**', 'source/**', 'experiments/**', 'verifier/**', 'tools/**', 'scripts/setup.sh') }}-v1
       - name: Setup
@@ -54,6 +53,8 @@ jobs:
             work/polyml.rev
             work/HOL
             work/HOL.rev
+            work/HOL-export
+            work/HOL-export.rev
             .build
           key: ${{ steps.cache.outputs.cache-primary-key }}
       - name: Benchmark
@@ -68,12 +69,15 @@ jobs:
           name: benchmark-score
           path: scripts/score.json
           if-no-files-found: error
+      # Stage logs and replay evidence only; the generated article stays on the runner.
       - name: Upload verifier logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: verifier-logs
           path: |
-            work/yukon/*/replay/replay.log
-            work/yukon/*/replay/replay-process.json
+            work/yukon/*/*.log
+            work/yukon/*/generated-package.json
+            work/yukon/*/strict-replay/replay.log
+            work/yukon/*/strict-replay/replay-process.json
           if-no-files-found: ignore

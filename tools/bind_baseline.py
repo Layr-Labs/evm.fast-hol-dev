@@ -16,9 +16,13 @@ def main():
     parser.add_argument('--hol', type=Path, required=True)
     parser.add_argument('--author-hol', type=Path, required=True)
     parser.add_argument('--build-dir', type=Path, default=ROOT/'.build')
+    parser.add_argument('--experiments-dir', type=Path, default=ROOT/'experiments',
+                        help='proof-source directory (used by source-submission verification)')
     parser.add_argument('--output', type=Path, default=ROOT/'.export-baseline/binding')
     parser.add_argument('--maxheap-mib', type=int, default=24576)
     parser.add_argument('--rom', type=Path, default=ROOT/'artifacts/baseline/rom.bin')
+    parser.add_argument('--claim', type=Path,
+                        help='validated claim.json; defaults to infinity for the released baseline')
     args = parser.parse_args()
     if args.maxheap_mib < 1:
         parser.error('--maxheap-mib must be positive')
@@ -26,14 +30,17 @@ def main():
     build, output = args.build_dir.resolve(), args.output.resolve()
     if standard == author or (build/'hol-path.txt').read_text() != str(standard):
         parser.error('use distinct author and standard HOL, and its matching build directory')
-    sources = theory_sources()
+    sources = theory_sources(args.experiments_dir.resolve())
     fixed = set(local_closure(build, sources, 'initProofLibrary'))
     candidates = [name for name in local_closure(build, sources, 'initBaselineCertificate')
                   if name not in fixed]
     output.mkdir(parents=True, exist_ok=True)
     rom = args.rom.read_bytes()
     (output/'rom.bin').write_bytes(rom)
-    deps = [str(Path(dep).with_suffix('')) for dep in dependencies(build, 'initBaselineCertificate')]
+    claim_path = args.claim.resolve() if args.claim else None
+    score = 'infinity' if claim_path is None else json.loads(claim_path.read_text())['K']
+    deps = [str(Path(dep).with_suffix('')) for dep in
+            dependencies(build, 'initBaselineCertificate', sources)]
     deps += ['initBaselineCertificateTheory', 'cv_transLib']
     script = output/'bind.sml'
     script.write_text(author_setup(build, standard, deps, candidates+['baselineLiteralBinding']) +
@@ -41,7 +48,7 @@ def main():
         'val _ = QUse.use '+json.dumps(str(ROOT/'tools/bind_baseline.sml'))+';\n')
     article = output/'binding.art'
     env = dict(os.environ, HOL_INIT_E_ROM=str(output/'rom.bin'),
-               HOL_INIT_E_BINDING_ARTICLE=str(article))
+               HOL_INIT_E_SCORE=str(score), HOL_INIT_E_BINDING_ARTICLE=str(article))
     with (output/'binding.log').open('w') as log:
         result = subprocess.run([str(author/'bin/hol'), '--maxheap', str(args.maxheap_mib), '--gcthreads=1', 'run',
             str(author/'sigobj/holmake_not_interactive.uo'), str(script)],
@@ -52,7 +59,7 @@ def main():
     (output/'binding.compact.art').replace(article)
     with article.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-    (output/'binding.json').write_text(json.dumps({'K':'infinity',
+    (output/'binding.json').write_text(json.dumps({'K':score,
         'rom_sha256':hashlib.sha256(rom).hexdigest(), 'article_sha256':digest}, indent=2)+'\n')
     print('Exported literal binding; independent full-certificate replay is still required.')
 

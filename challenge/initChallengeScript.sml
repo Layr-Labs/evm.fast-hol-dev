@@ -8,7 +8,7 @@ Definition matchingExecutionAt_def:
     (?targetOutcome post finalFfi.
       challengeEvaluate (submissionConfig s) (sourceFfi input) steps (initialState s input) =
         (Halt targetOutcome,post,finalFfi) /\
-      matchingResult (terminalOracle acceleratorBytes) (guestHostMemory input)
+      matchingResult terminalOracle (guestHostMemory input)
         outcome events targetOutcome finalFfi.io_events)
 End
 Definition submissionCertificate_def:

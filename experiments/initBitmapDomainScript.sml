@@ -8,7 +8,7 @@ Definition bitmapDomain_def:
 End
 Theorem bitmap_word_domain:
   byte_aligned INTER bitmapDomain =
-  IMAGE (\i. n2w (bootDataRam+24+8*i):word64) (count 4614)
+  IMAGE (\i. n2w (bootDataRam+24+8*i):word64) (count 4603)
 Proof
   simp [EXTENSION,bitmapDomain_def,IN_DEF,byte_aligned_def,aligned_w2n,
     dimindex_64,bootDataRam_def,bootDataEnd_def] >>

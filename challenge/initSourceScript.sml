@@ -1,12 +1,11 @@
-(* Source state from InitE/SourceSemantics.lean. The public source semantics
-   below bind the concrete accelerator specification. *)
+(* Source state from the software guest revision of InitE/SourceSemantics.lean. *)
 Theory initSource
-Ancestors initGuest initAccel panSem stack_remove
+Ancestors initGuest initHost panSem stack_remove
 Libs preamble wordsLib
 
 Definition startupHeaders_def:
   startupHeaders : word64 list =
-    [0xa0020018w; 0xa0029048w; 0xa0029048w; 0x800ddd94w; 0x800de000w]
+    [0xa0020018w; 0xa0028ff0w; 0xa0028ff0w; 0x800f0134w; 0x800f1000w]
 End
 Definition ordinaryDomain_def:
   ordinaryDomain =
@@ -21,44 +20,44 @@ Definition sharedDomain_def:
 End
 Definition sourceMemory_def:
   sourceMemory (address : word64) =
-    let offset = w2n (address - n2w sourceBase) in
-      Word (if offset MOD 8 = 0 /\ offset DIV 8 < LENGTH startupHeaders
-            then EL (offset DIV 8) startupHeaders else 0w)
+    Word (if sourceBase <= w2n address /\ w2n address < sourceBase + 40
+          then EL ((w2n address - sourceBase) DIV 8) startupHeaders else 0w)
 End
 Definition sourceFfiFor_def:
-  sourceFfiFor accelerator input =
-    initial_ffi_state (terminalOracle accelerator) (guestHostMemory input)
+  sourceFfiFor input =
+    initial_ffi_state terminalOracle (guestHostMemory input)
 End
 Definition sourceInitialStateFor_def:
-  sourceInitialStateFor accelerator input =
+  sourceInitialStateFor input =
     <| locals := FEMPTY; globals := FEMPTY; structs := [];
        code := FEMPTY; eshapes := FEMPTY;
        memory := sourceMemory; memaddrs := ordinaryDomain;
        sh_memaddrs := sharedDomain; clock := 0; be := F;
-       ffi := sourceFfiFor accelerator input;
+       ffi := sourceFfiFor input;
        base_addr := n2w sourceBase; top_addr := n2w heapEnd |>
 End
 Definition sourceBehaviourFor_def:
-  sourceBehaviourFor accelerator input =
-    panSem$semantics_decls (sourceInitialStateFor accelerator input) «main» guestAst
+  sourceBehaviourFor input =
+    panSem$semantics_decls (sourceInitialStateFor input) «main» guestAst
 End
 
 Theorem startup_memory:
   sourceMemory (n2w sourceBase) = Word 0xa0020018w /\
-  sourceMemory (n2w (sourceBase + 32)) = Word 0x800de000w /\
+  sourceMemory (n2w (sourceBase + 1)) = Word 0xa0020018w /\
+  sourceMemory (n2w (sourceBase + 32)) = Word 0x800f1000w /\
   sourceMemory (n2w (sourceBase + 40)) = Word 0w
 Proof
   EVAL_TAC
 QED
 
 Definition sourceFfi_def:
-  sourceFfi input = sourceFfiFor acceleratorBytes input
+  sourceFfi input = sourceFfiFor input
 End
 Definition sourceInitialState_def:
-  sourceInitialState input = sourceInitialStateFor acceleratorBytes input
+  sourceInitialState input = sourceInitialStateFor input
 End
 Definition sourceBehaviour_def:
-  sourceBehaviour input = sourceBehaviourFor acceleratorBytes input
+  sourceBehaviour input = sourceBehaviourFor input
 End
 Theorem source_oracle_fixed:
   (sourceInitialState input).ffi = sourceFfi input

@@ -1,0 +1,57 @@
+{
+  "scope": "Fresh coherent standard-HOL compilation and ROM construction; full Certificate and independent replay pending",
+  "comparisons": {
+    "native": {
+      "bytes": 979140,
+      "sha256": "e800f2e5f1845c6428008be2e49d5725c4b342819ece4e128ba6e4c44e58face",
+      "reference_equal": true
+    },
+    "bitmaps": {
+      "bytes": 36824,
+      "sha256": "f026628fe8e40c281619cf01574a29e8270a4b0805142eafac95e207d224c5d5",
+      "reference_equal": true
+    },
+    "rom": {
+      "bytes": 1028080,
+      "sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b",
+      "reference_equal": true
+    }
+  },
+  "input_arena_regressions": [
+    "oversized_rejected_before_allocation",
+    "in_range_reaches_payload",
+    "arena_valid_but_heap_limited"
+  ],
+  "hol_build_result": {
+    "status": "passed",
+    "started": "2026-10-25T00:33:47.922648+00:00",
+    "finished": "2026-10-25T01:43:45.802028+00:00",
+    "exit": 0,
+    "timed_out": false,
+    "command": [
+      "/usr/bin/python3",
+      "tools/build.py",
+      "--hol",
+      "/home/zksecurity/cv_compute/HOL-init-e",
+      "--jobs",
+      "3",
+      "--maxheap-mib",
+      "24576",
+      "initInputArenaChecksTheory.uo",
+      "initArtifactsTheory.uo",
+      "initStackEdgesTheory.uo",
+      "initStackFramesTheory.uo",
+      "initBaselineRomTheory.uo"
+    ]
+  },
+  "source_hashes": {
+    "challenge/initGuestScript.sml": "be19b0b0f83dba8bc4381b7158a03882c3f07feafadf91c931350aa510ad3a44",
+    "challenge/initHostScript.sml": "49aa43aef8d5bea01ef1fb7417ecd2e9a81cb99e452cb4ec0b9ca82f861ca206",
+    "experiments/initBytecodeScript.sml": "45e9b84965e4f9faee42230a4700152ca21fcb6a414b9a8601a37f7ba3b648a0",
+    "experiments/initInputArenaChecksScript.sml": "6930bd5706706ef76d7d7040663528ce63149a7e7db5ce5c8f440c96ec75c85c",
+    "experiments/initArtifactsScript.sml": "183790caaf1cdc32b35c797a4a334abcea751eb89abac6c100cec5fd8071b553",
+    "experiments/initBaselineRomScript.sml": "927bcf2d32de4894c25e432d05a7e6cd951b7cd01afb70c22d3cd1d01279f5cf",
+    "experiments/initBaselinePaddingScript.sml": "864f85503ae67b35b8604b7ace9fabaf0f7b6ca19cadda2cd2f6d9658060b2fb",
+    "experiments/original-allocation.term": "95a6356698af513a69c56ef6ce221101ff4374812b527ffa5c427861bb5465b7"
+  }
+}

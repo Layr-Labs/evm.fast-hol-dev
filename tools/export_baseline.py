@@ -18,9 +18,9 @@ from compact_article import compact
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def theory_sources():
-    return {p.stem[:-6]: p for directory in ('challenge', 'experiments')
-            for p in (ROOT/directory).glob('*Script.sml')}
+def theory_sources(experiments_dir=ROOT/'experiments'):
+    return {p.stem[:-6]: p for directory in (ROOT/'challenge', experiments_dir)
+            for p in directory.glob('*Script.sml')}
 
 
 def source_modules(source):
@@ -41,8 +41,8 @@ def source_modules(source):
     return list(dict.fromkeys(modules))
 
 
-def dependencies(build, name):
-    source = theory_sources()[name]
+def dependencies(build, name, sources=None):
+    source = (theory_sources() if sources is None else sources)[name]
     standard = Path((build/'hol-path.txt').read_text())
     paths = {}
     for directory in [standard, build]:
@@ -88,9 +88,9 @@ val _ = Logging.set_tyop_name_handler
 '''
 
 
-def driver(build, standard, source, target, candidates, article):
+def driver(build, standard, source, target, candidates, article, sources):
     q = json.dumps
-    deps = [str(Path(dep).with_suffix('')) for dep in dependencies(build, target)]
+    deps = [str(Path(dep).with_suffix('')) for dep in dependencies(build, target, sources)]
     return author_setup(build, standard, deps, candidates) + f'''val _ = Theory.register_hook ("article-export",fn delta => case delta of
  TheoryDelta.NewTheory {{newseg,...}} =>
   if newseg={q(target)} then Logging.raw_start_logging [] (TextIO.openOut {q(str(article))}) else ()
@@ -242,6 +242,8 @@ def main():
     parser.add_argument('--hol', type=Path, required=True)
     parser.add_argument('--author-hol', type=Path, required=True)
     parser.add_argument('--build-dir', type=Path, default=ROOT/'.build')
+    parser.add_argument('--experiments-dir', type=Path, default=ROOT/'experiments',
+                        help='proof-source directory (used by source-submission verification)')
     parser.add_argument('--output', type=Path, default=ROOT/'.export-baseline')
     parser.add_argument('--stop-before', help='stop before this theory when exporting a suffix')
     parser.add_argument('--maxheap-mib', type=int, default=24576, help='Poly/ML heap limit per worker (default: 24576 MiB)')
@@ -260,7 +262,7 @@ def main():
     build, output = args.build_dir.resolve(), args.output.resolve()
     if not (build/'hol-path.txt').is_file() or (build/'hol-path.txt').read_text() != str(standard):
         parser.error('--build-dir must belong to the specified standard HOL checkout')
-    sources = theory_sources()
+    sources = theory_sources(args.experiments_dir.resolve())
     fixed = set(local_closure(build, sources, 'initProofLibrary'))
     candidates = [name for name in local_closure(build, sources, 'initBaselineCertificate')
                   if name not in fixed]
@@ -281,7 +283,8 @@ def main():
         script = work/'export.sml'
         hint = allocation_hint(build, standard, work, runtime) if target == "initBytecode" else None
         recorded_source = author_source(sources[target], target, work, hint)
-        contents = driver(build, standard, recorded_source, target, candidates, article)
+        contents = driver(build, standard, recorded_source, target, candidates,
+                          article, sources)
         stamp = work/'complete.json'
         key_material = contents + recorded_source.read_text()
         if hint is not None:

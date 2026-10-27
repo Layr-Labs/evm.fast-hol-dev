@@ -7,16 +7,16 @@ val _ = Feedback.set_trace "TheoryPP.include_html_docs" 0;
 val _ = cv_memLib.use_long_names := true;
 (* Place the exact native image so its end matches the fixed source header. *)
 Definition baselineNativePc_def:
-  baselineNativePc : num = 0x80001190
+  baselineNativePc : num = 0x80001070
 End
 Definition bootDataRom_def:
-  bootDataRom : num = 0x800df000
+  bootDataRom : num = 0x800f2000
 End
 Definition bootDataRam_def:
   bootDataRam : num = 0xa0020000
 End
 Definition bootDataEnd_def:
-  bootDataEnd : num = 0xa0029048
+  bootDataEnd : num = 0xa0028ff0
 End
 Definition bootLoc_def:
   bootLoc rn (pc:num) (address:num) = asm$Loc rn (&address - &pc)
@@ -64,9 +64,9 @@ Definition bootstrapBlocks_def:
   (0x80000084, bootStore 6 5 8);
   (0x80000088, bootLoc 6 0x80000088 bootDataEnd);
   (0x80000090, bootStore 6 5 16);
-  (0x80000094, bootLoc 6 0x80000094 0x800ddd94);
+  (0x80000094, bootLoc 6 0x80000094 0x800f0134);
   (0x8000009c, bootStore 6 5 24);
-  (0x800000a0, bootLoc 6 0x800000a0 0x800de000);
+  (0x800000a0, bootLoc 6 0x800000a0 0x800f1000);
   (0x800000a8, bootStore 6 5 32);
   (0x800000ac, bootConst 11 161);
   (0x800000b0, bootShift 11 24);
@@ -91,10 +91,10 @@ Proof
   EVAL_TAC
 QED
 Theorem bootstrap_layout:
-  baselineNativePc - initialPc = 4496 /\
-  baselineNativePc + 904196 = 0x800ddd94 /\
-  0x800de000 <= bootDataRom /\
-  bootDataEnd - bootDataRam = 8 * (3 + 4614) /\
+  baselineNativePc - initialPc = 4208 /\
+  baselineNativePc + 979140 = 0x800f0134 /\
+  0x800f1000 <= bootDataRom /\
+  bootDataEnd - bootDataRam = 8 * (3 + 4603) /\
   initialPc + 208 < baselineNativePc - 16 * (20 + 2)
 Proof
   EVAL_TAC

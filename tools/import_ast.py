@@ -19,7 +19,7 @@ CONSTRUCTORS = {
     "BinOp.or": "Or", "BinOp.xor": "Xor", "PanOp.mul": "Mul",
     "Cmp.equal": "Equal", "Cmp.notEqual": "NotEqual", "Cmp.less": "Less",
     "Cmp.notLess": "NotLess", "Cmp.lower": "Lower", "Cmp.notLower": "NotLower",
-    "Shift.lsl": "Lsl", "Shift.lsr": "Lsr", "Shift.asr": "Asr",
+    "Shift.lsl": "Lsl", "Shift.lsr": "Lsr", "Shift.asr": "Asr", "Shift.ror": "Ror",
     "OpSize.op8": "Op8", "OpSize.opW": "OpW", "PrimOp.addCarry": "AddCarry",
     "some": "SOME", "none": "NONE", "true": "T", "false": "F",
 }
@@ -79,7 +79,8 @@ def generate(source):
     expected = json.loads((ROOT/'provenance.json').read_text())['ast_sha256']
     if hashlib.sha256(source).hexdigest() != expected:
         raise ValueError("AST does not match pinned provenance")
-    text = source.decode().split('open Flapjack',1)[1].rsplit('end Guest',1)[0]
+    text = source.decode().split('open Flapjack',1)[1]
+    text = re.sub(r'\bend Guest(?:\.Software)?\s*$', '', text)
     decls = list(re.finditer(r'\bdef (\w+) : (Decl \(BitVec 64\)|List \(Decl \(BitVec 64\)\)) :=', text))
     if not decls or text[:decls[0].start()].strip(): raise ValueError("invalid AST header")
     known, output = set(), ['(* Generated from the pinned init-e literal AST. *)',

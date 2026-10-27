@@ -15,7 +15,7 @@ Definition baselineInitialAsm_def:
        pc := n2w initialPc; lr := 1; align := 2; be := F; failed := F |>
 End
 Theorem baseline_bootstrap_domains:
-  (!i. i < 36936 ==>
+  (!i. i < 36848 ==>
     n2w (bootDataRom+i) IN programDomain baselineSubmission /\
     n2w (bootDataRam+i) IN programDomain baselineSubmission) /\
   (!i. i < 40 ==> n2w (0xa1000000+i) IN programDomain baselineSubmission)

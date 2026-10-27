@@ -40,12 +40,15 @@ Theorem baseline_source_memory:
 Proof
   rw [ordinaryDomain_def] >>
   `8*i < 2**64` by fs [sourceBase_def,EVAL ``stackStart``,globalsWords_def] >>
+  `sourceBase + 8*i < 2**64` by
+    (fs [sourceBase_def,EVAL ``stackStart``,globalsWords_def] >> decide_tac) >>
   `LENGTH startupHeaders = 5` by EVAL_TAC >>
-  fs [sourceMemory_def,WORD_ADD_SUB,WORD_ADD_SUB2,w2n_n2w,dimword_64] >>
-  Cases_on `i < 5`
-  >- (mp_tac (Q.INST [`s` |-> `baselineInitialAsm input`]
+  fs [sourceMemory_def,word_add_n2w,WORD_ADD_SUB,WORD_ADD_SUB2,w2n_n2w,dimword_64] >>
+  Cases_on `8*i < 40`
+  >- (`i < 5` by decide_tac >>
+      mp_tac (Q.INST [`s` |-> `baselineInitialAsm input`]
         bootstrap_final_source_headers) >>
-      simp [baselineInitialAsm_def,sourceBase_def] >> metis_tac []) >>
+      simp [baselineInitialAsm_def,sourceBase_def,word_add_n2w] >> metis_tac []) >>
   simp [word_add_n2w] >> irule baseline_heap_word_zero >>
   fs [word_add_n2w,sourceBase_def,EVAL ``stackStart``,globalsWords_def]
 QED

@@ -1,0 +1,10 @@
+{
+  "candidate_manifest": "/var/tmp/hol-software-source-candidate-v5-manifest.json",
+  "candidate_files": 145,
+  "candidate_bytes": 3045749,
+  "candidate_zip_bytes": 693478,
+  "candidate_rom_sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b",
+  "trusted_manifest_sha256": "a48c8b9281a12e70d171c4d7bb3b1c4a6426b210359a9387af354a1e4041e470",
+  "verifier_heap_sha256": "89eacdbed4a58a53de820ef57a7551b1b763dc9462a420facb0d0a152c55d865",
+  "local_certificate_status": "passed"
+}

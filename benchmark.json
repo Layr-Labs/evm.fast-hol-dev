@@ -4,7 +4,7 @@
   "tracks": [
     {
       "name": "hol",
-      "description": "Prove in HOL4 that submitted RISC-V bytes satisfy the fixed init-e Certificate for the Pancake EVM guest within a step bound K, as an OpenTheory article, and minimize K. The initial submission claims infinity.",
+      "description": "Prove in HOL4 that submitted RISC-V bytes satisfy the fixed init-e Certificate for the software-precompile EVM guest within a step bound K, and minimize K. Submissions are HOL4 proof sources that the verifier builds and exports in a sandbox, then strictly replays. The initial submission claims infinity.",
       "category": "hol",
       "direction": "-",
       "editablePaths": [
@@ -20,24 +20,11 @@
       ],
       "scorePath": "scripts/score.json",
       "exactScores": true,
-      "hardware": "Official runs: blacksmith-32vcpu-ubuntu-2404 (128 GB RAM), directly on the runner; the verifier never executes candidate ML. Replay limits: 21,600 s CPU and wall time, 112 GiB address space. The 2.8 GB baseline article took 8,973 s and 90.4 GiB RSS upstream. Cold setup builds Poly/ML, HOL4 and the CakeML compiler theories; its duration is not yet measured (23-hour job timeout).",
+      "hardware": "Official runs: blacksmith-32vcpu-ubuntu-2404 (128 GB RAM), directly on the runner; candidate proof scripts run only inside the verifier's Bubblewrap sandbox. Limits: 36,000 s and 64 GiB address space per author stage (build, export, bind, package), 21,600 s CPU and wall time and 112 GiB address space for strict replay, 75,600 s for the whole verifier. Upstream's accepted baseline run took 39,177 s (10 h 53 min) end to end, 13,128 s of it strict replay, with 90.25 GiB maximum RSS. Cold setup builds Poly/ML, two HOL4 trees and the baseline theories; official runs restore it from a cache saved on main.",
       "runner": {
         "provider": "github-actions",
         "workflow": "benchmark.yml"
-      },
-      "largeFiles": [
-        {
-          "name": "certificate",
-          "paths": [
-            "candidate/certificate.art.zip",
-            "candidate/certificate.art.xz",
-            "candidate/certificate.art"
-          ],
-          "maxBytes": 314572800,
-          "maxExpandedBytes": 3221225472,
-          "required": false
-        }
-      ]
+      }
     }
   ]
 }

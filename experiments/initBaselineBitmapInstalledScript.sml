@@ -10,7 +10,7 @@ Theorem baseline_bitmap_word_list:
     (fun2set (baselinePackedMemory input, byte_aligned INTER bitmapDomain))
 Proof
   rewrite_tac [bitmap_word_domain] >>
-  `IMAGE (\i. n2w (bootDataRam+24+8*i):word64) (count 4614) =
+  `IMAGE (\i. n2w (bootDataRam+24+8*i):word64) (count 4603) =
    IMAGE (\i. n2w (bootDataRam+24)+n2w i*bytes_in_word:word64)
      (count (LENGTH (MAP wordLang$Word compiledBitmaps)))` by
     simp [compiled_bitmap_count,bytes_in_word_def,word_mul_n2w,word_add_n2w] >>

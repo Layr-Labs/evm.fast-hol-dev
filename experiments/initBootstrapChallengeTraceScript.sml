@@ -12,7 +12,7 @@ val _ = Feedback.set_trace "TheoryPP.include_html_docs" 0;
 Theorem bootstrap_challenge_trace:
   bootstrapRomInvariant input s /\ s.pc = n2w initialPc /\
   s.lr = 1 /\ ~s.be /\ s.align = 2 /\ ~s.failed /\
-  (!i. i < 36936 ==>
+  (!i. i < 36848 ==>
     n2w (bootDataRom+i) IN s.mem_domain /\
     n2w (bootDataRam+i) IN s.mem_domain) /\
   (!i. i < 40 ==> n2w (0xa1000000+i) IN s.mem_domain) ==>
@@ -34,7 +34,7 @@ Proof
   rewrite_tac [bootFinalState_def] >>
   irule challengeBootSteps_RTC >> irule bootstrap_challenge_suffix_steps >>
   fs [bootCopyState_def,copy_iterations_consts,bootRun_consts] >>
-  metis_tac [DECIDE ``(i:num) < 24 ==> i < 36936``,bootDataRam_def]
+  metis_tac [DECIDE ``(i:num) < 24 ==> i < 36848``,bootDataRam_def]
 QED
 val _ = List.app (fn th => if null(hyp th) then ignore(check_thm th)
   else failwith "full bootstrap execution assumptions")

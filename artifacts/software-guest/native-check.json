@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "native_bytes": 979140,
+  "sha256": "e800f2e5f1845c6428008be2e49d5725c4b342819ece4e128ba6e4c44e58face",
+  "matches_init_e_and_rocq": true,
+  "hol_build_result": {
+    "status": "passed",
+    "exit": 0,
+    "finished": "2026-10-25T00:12:15.947268+00:00"
+  },
+  "scope": "Checked HOL backend compilation and exact native byte comparison. Full top-level Certificate and independent replay remain separate pending gates.",
+  "bootstrap": {
+    "status": "passed",
+    "bytes": 208,
+    "sha256": "7d72ad5b871820051fad1b06e9ac06740b29352b93642f5475b281ae7b61c5b1",
+    "matches_reference_prefix": true,
+    "proof_marker_present": true
+  },
+  "untrusted_proposal": {
+    "native.bin": {
+      "bytes": 979140,
+      "sha256": "e800f2e5f1845c6428008be2e49d5725c4b342819ece4e128ba6e4c44e58face",
+      "matches_reference": true
+    },
+    "bitmaps.bin": {
+      "bytes": 36824,
+      "sha256": "f026628fe8e40c281619cf01574a29e8270a4b0805142eafac95e207d224c5d5",
+      "matches_reference": true
+    },
+    "allocation": {
+      "entries": 814,
+      "sha256": "95a6356698af513a69c56ef6ce221101ff4374812b527ffa5c427861bb5465b7",
+      "ordering": "Explicit source function IDs; independent of OCaml MAP evaluation order",
+      "trust": "Untrusted proposal; HOL validation required"
+    }
+  }
+}

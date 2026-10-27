@@ -2,48 +2,69 @@
   "kind": "native-pancake-compiler-output",
   "challenge_certificate": "verified",
   "theorem": "initBaselineCertificate.baseline_certificate",
-  "bitmap_words": 4614,
+  "verification": "software-guest/verification.json",
   "dependencies": {
-    "init-e": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd",
+    "init-e": "184e96cdcfc2e1583979af94f626fb3f5a052441",
     "cakeml": "e2b88323e632a5353c142ceef1af4bab77a8f928",
     "HOL": "d57edec8a4a772f8bcc163fb4edd2126e1696f0f",
-    "ast_sha256": "21925d793b4159c30406a4d48a7402d4a2cdc23e0189201342aa89778d4534ed",
+    "ast_sha256": "8e806c795bc4e0c3edc6d1475ad6e14b43c74cf69c71732133f2dda03d84721f",
     "tested_hol": "7f769972f0acf26df39facd83339c05a66d9ff26",
     "flapjack": "034bb5a1ed0b757082768d5406206bd2f8e31b7c",
-    "input_arena_fix": {
+    "startup_headers_reference": "184e96cdcfc2e1583979af94f626fb3f5a052441",
+    "baseline_rom_reference": "e77282a23cb2d6c71f6add008ac504a32f57cb8f",
+    "software_guest_update": {
+      "guest_revision": "35569814e3fd569fd98cccdf2a9704683d42d2d9",
+      "rocq_reference": "92a72335e66fd689e5dcc52924ac2224242f5f72",
+      "pancake_sha256": "2cc9024d6979d623c503521b219123bc5f63cd69504bea97b93b3aad62e5360c",
+      "reference_differences": [
+        "Rocq retains old input/output/scratch constants and zero-filled arena host memory; original init-e current semantics are authoritative."
+      ],
+      "ast_path": "Guest/SoftwareAst.lean",
+      "baseline_rom_sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b",
+      "native_entry": "0x80001070",
+      "native_end": "0x800f0134",
+      "native_bytes": 979140,
+      "bitmap_words": 4603,
+      "code_buffer_bytes": 3788
+    },
+    "historical_input_arena_fix": {
       "pull_request": "https://github.com/flamingoponderado/init-e/pull/25",
       "revision": "afa0071e8611d5b1b18d4033cc350e5072d4a0dd",
       "base_revision": "1ac86616d6af633f734c1b50b2d65bcc267d4ae5",
       "hol_layout_adjustment": {
         "bitmap_words": 4614,
         "bitmap_end": "0xa0029048",
-        "native_entry": "0x80000fec",
+        "native_entry": "0x80001190",
         "native_end": "0x800ddd94",
-        "scope": "Startup headers now exactly match original init-e b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2 and the Rocq port: [0xa0020018,0xa0029048,0xa0029048,0x800ddd94,0x800de000]. Native entry advances by140bytes for unchanged HOL native compilation; code buffer620bytes. No input-length premise is added."
+        "scope": "Startup headers and full baseline ROM match original init-e b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2 exactly. Original deterministic allocator colourings are untrusted hints checked in HOL; native904196bytes,bitmaps4614words,buffer620bytes; original padding and zero initial data words retained. No input-size premise added."
       }
-    },
-    "startup_headers_reference": "b3831bc501713e27b9f6974a5eb3cd0b1ca0d2c2"
+    }
   },
   "files": {
     "native-riscv.bin": {
-      "bytes": 904196,
-      "sha256": "21e4ad09c0b75c4e7d79ea8945cca480edad6b34410099ffff8760a08158c34e"
+      "bytes": 979140,
+      "sha256": "e800f2e5f1845c6428008be2e49d5725c4b342819ece4e128ba6e4c44e58face"
     },
     "bitmaps.txt": {
-      "bytes": 25671,
-      "sha256": "220b69a84474673eeae091b3e7f4a605a8a4b05fc791100e3a78aba8aace9bbc"
+      "bytes": 25584,
+      "sha256": "968a18b06d416a64301fa81aea33330fd94177b8cb13be01322a97d03418544a"
     },
     "backend.conf": {
-      "bytes": 174579,
-      "sha256": "1ced67349b4896bb51909161a03ba36584fe36d7453d332a3aa4c790873a6ff2"
+      "bytes": 174377,
+      "sha256": "d60a72c14b4e5960b530c05d7011582ec73e4f44c9a5bdfbf53f782fedd0cbd7"
+    },
+    "software-guest/rom.bin": {
+      "bytes": 1028080,
+      "sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b"
     }
   },
-  "rom_sha256": "22a1dd0963f12a3492e647b2626101fad2312dfcff813978b8ff1aca9897d7cc",
-  "rom_bytes": 950344,
-  "native_entry": "0x80001190",
-  "native_end": "0x800ddd94",
-  "native_bytes": 904196,
-  "native_sha256": "21e4ad09c0b75c4e7d79ea8945cca480edad6b34410099ffff8760a08158c34e",
-  "bitmap_sha256": "1ff90e1caf1c69e47f3b9ece79a99e74884e9511f14e822bbc6f090bca020277",
-  "code_buffer_bytes": 620
+  "bitmap_words": 4603,
+  "bitmap_packed_sha256": "f026628fe8e40c281619cf01574a29e8270a4b0805142eafac95e207d224c5d5",
+  "native_bytes": 979140,
+  "native_entry": "0x80001070",
+  "native_end": "0x800f0134",
+  "code_buffer_bytes": 3788,
+  "rom_bytes": 1028080,
+  "rom_sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b",
+  "formal_reduced_lean_decoder_step_agreement": "outstanding"
 }
