@@ -72,6 +72,7 @@ class Harness(unittest.TestCase):
             self.command = command
             self.assertTrue(command[1].endswith("verifier/verify.py"))
             self.assertTrue(kwargs["start_new_session"])
+            self.assertTrue((self.root / ".hol" / "build-logs").is_dir())
             return FakeProcess(text, returncode, timeout)
         return patch.object(run.subprocess, "Popen", fake)
 

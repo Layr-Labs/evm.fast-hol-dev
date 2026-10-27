@@ -124,6 +124,9 @@ def main() -> None:
     score_path.unlink(missing_ok=True)
     work = TOOLS / "yukon" / uuid.uuid4().hex
     work.parent.mkdir(parents=True, exist_ok=True)
+    # Holmake records target times in .hol/build-logs under the project root (holproject.toml). The
+    # sandbox mounts the repository read-only: HOL ignores the failed write but fails on a missing directory.
+    (ROOT / ".hol" / "build-logs").mkdir(parents=True, exist_ok=True)
     report, timing = run_verifier(work)
     print(json.dumps(report, sort_keys=True))
     print(f"Verifier timing: {json.dumps(timing)}", file=sys.stderr)
