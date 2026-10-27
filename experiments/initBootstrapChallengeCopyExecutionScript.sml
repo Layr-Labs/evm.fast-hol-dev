@@ -20,13 +20,13 @@ Theorem baseline_copy_iteration_challenge_steps:
   s.lr = 1 /\ ~s.be /\ s.align = 2 /\ ~s.failed /\
   s.regs 5 = n2w bootDataRom /\ s.regs 6 = n2w bootDataRam /\
   s.regs 7 = n2w bootDataEnd /\
-  (!i. i < 36936 ==>
+  (!i. i < 36848 ==>
     n2w (bootDataRom+i) IN s.mem_domain /\
-    n2w (bootDataRam+i) IN s.mem_domain) /\ n < 4617 ==>
+    n2w (bootDataRam+i) IN s.mem_domain) /\ n < 4606 ==>
   challengeBootSteps copyLoopBody (copyIterations n s)
 Proof
   strip_tac >>
-  `!k. k < 4617 ==>
+  `!k. k < 4606 ==>
     aligned 3 (s.regs 5 + n2w (8*k)) /\
     aligned 3 (s.regs 6 + n2w (8*k)) /\
     (!j. j < 8 ==> s.regs 5 + n2w (8*k) + n2w j IN s.mem_domain) /\
@@ -35,13 +35,13 @@ Proof
     (match_mp_tac baseline_iteration_bounds >> asm_rewrite_tac []) >>
   `bootstrapRomInvariant input (copyIterations n s)` by
     (match_mp_tac copy_iterations_preserve_rom >> asm_rewrite_tac [] >>
-     rpt strip_tac >> `i < 4617` by decide_tac >>
-     qpat_x_assum `!k. k < 4617 ==> _` (qspec_then `i` mp_tac) >>
+     rpt strip_tac >> `i < 4606` by decide_tac >>
+     qpat_x_assum `!k. k < 4606 ==> _` (qspec_then `i` mp_tac) >>
      asm_rewrite_tac [] >> metis_tac []) >>
   `~(copyIterations n s).failed` by
     (match_mp_tac copy_iterations_success >> asm_rewrite_tac [] >>
-     rpt strip_tac >> `i < 4617` by decide_tac >>
-     qpat_x_assum `!k. k < 4617 ==> _` (qspec_then `i` mp_tac) >>
+     rpt strip_tac >> `i < 4606` by decide_tac >>
+     qpat_x_assum `!k. k < 4606 ==> _` (qspec_then `i` mp_tac) >>
      asm_rewrite_tac [] >> metis_tac []) >>
   `(copyIterations n s).pc = s.pc` by
     (irule copy_iterations_pc >>
@@ -49,7 +49,7 @@ Proof
      rpt strip_tac >> decide_tac) >>
   irule copy_loop_challenge_steps >>
   fs [copy_iterations_consts,copy_iterations_pointers] >>
-  qpat_x_assum `!k. k < 4617 ==> _` (qspec_then `n` mp_tac) >>
+  qpat_x_assum `!k. k < 4606 ==> _` (qspec_then `n` mp_tac) >>
   asm_simp_tac std_ss [word_add_n2w,ADD_ASSOC,ADD_COMM] >> metis_tac []
 QED
 Theorem baseline_copy_challenge_execution:
@@ -57,11 +57,11 @@ Theorem baseline_copy_challenge_execution:
   s.lr = 1 /\ ~s.be /\ s.align = 2 /\ ~s.failed /\
   s.regs 5 = n2w bootDataRom /\ s.regs 6 = n2w bootDataRam /\
   s.regs 7 = n2w bootDataEnd /\
-  (!i. i < 36936 ==>
+  (!i. i < 36848 ==>
     n2w (bootDataRom+i) IN s.mem_domain /\
     n2w (bootDataRam+i) IN s.mem_domain) ==>
   RTC (initChallengeExecution$challengeAsmEdge (initSubmission$submissionConfig initBaselineAdmission$baselineSubmission))
-    s (copyIterations 4617 s)
+    s (copyIterations 4606 s)
 Proof
   strip_tac >> rewrite_tac [GSYM copy_instructions_run] >>
   irule challengeBootSteps_RTC >> irule copy_instructions_challenge_steps >>

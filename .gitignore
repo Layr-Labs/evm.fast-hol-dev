@@ -28,13 +28,3 @@ logs/
 .export-baseline-layout-sync/
 
 .export-baseline-rom-match/
-
-/work/
-/scripts/score.json
-/scripts/score.tmp
-
-# Large candidate files: Yukon uploads them and commits the .yukon-ref.json pointer instead.
-/candidate/certificate.art
-/candidate/certificate.art.xz
-/candidate/certificate.art.zip
-/candidate/*.yukon-download

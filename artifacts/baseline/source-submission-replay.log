@@ -1,0 +1,11 @@
+
+---------------------------------------------------------------------
+     HOL4 [Trindemossen 2 (stdknl, built Wed Oct 07 14:39:56 2026)]
+
+     For introductory HOL help, type: help "hol";
+     To exit type <Control>-D
+---------------------------------------------------------------------
+<<HOL message: Created theory "submissionLiterals">>
+Exporting theory "submissionLiterals" ... done.
+Theory "submissionLiterals" took 8.5s to build
+<<HOL message: Created theory "candidateCertificate">>

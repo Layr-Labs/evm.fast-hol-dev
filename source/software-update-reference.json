@@ -1,0 +1,58 @@
+{
+  "pins": {
+    "init-e": "184e96cdcfc2e1583979af94f626fb3f5a052441",
+    "rocq-init-e": "92a72335e66fd689e5dcc52924ac2224242f5f72"
+  },
+  "software_guest": "35569814e3fd569fd98cccdf2a9704683d42d2d9",
+  "pancake_text_equal": true,
+  "pancake_sha256": "2cc9024d6979d623c503521b219123bc5f63cd69504bea97b93b3aad62e5360c",
+  "ast_bodies_equal": true,
+  "ast_header_difference": "Comments and imported module name only; all text after open Flapjack is identical.",
+  "init_e_ast_sha256": "8e806c795bc4e0c3edc6d1475ad6e14b43c74cf69c71732133f2dda03d84721f",
+  "rocq_ast_sha256": "aa1963af1d48bf6b6d453cf1534b2b1be715638630106233a6b906e7fa663017",
+  "reference_artifacts": {
+    "native_bytes": 979140,
+    "prefix_bytes": 4208,
+    "suffix_bytes": 44732,
+    "rom_bytes": 1028080,
+    "bitmaps_words": 4603,
+    "current_init_e_literal_differences": [],
+    "bitmaps_sha256": "f026628fe8e40c281619cf01574a29e8270a4b0805142eafac95e207d224c5d5",
+    "bookkeeping_sha256": "88823aaae6631891c21483ebe01236711369cd8d0ec12673bfd93bb2550fca37",
+    "compiler_config_sha256": "f20ae8ed9d9f5767e6e0e610dba99a89cbcbac218e857a516d0880bff3fbb465",
+    "native_sha256": "e800f2e5f1845c6428008be2e49d5725c4b342819ece4e128ba6e4c44e58face",
+    "prefix_sha256": "1d1dbdd4520de0e86bd8f4e472f957dab36bd0ef82714465efec544406b96a2f",
+    "rom_sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b",
+    "suffix_sha256": "0a5ec76af63ef72489acfbc3e80db3a2ae6ccd0557a9969a1b8362b0b705507a"
+  },
+  "fixed_init_e_layout": {
+    "input_size": 1073741824,
+    "output_size": 4096,
+    "scratch_start": "0xa0411000",
+    "scratch_end": "0xa0fff000",
+    "source_base": "0xa1000000",
+    "globals_words": 67,
+    "native_entry": "0x80001070",
+    "native_end": "0x800f0134",
+    "code_buffer_bytes": 3788
+  },
+  "rocq_semantics_differences": [
+    "Input arena remains 134217728 bytes, output window remains 65536 bytes, and scratch layout remains the old sourceBase+4096 / 0xa1c00000 layout.",
+    "Rocq host memory still maps the full input arena with zeros beyond framed input; current init-e maps only the framed bytes, with a 64-bit wrapping end address."
+  ],
+  "external_calls": [
+    "halt",
+    "trap"
+  ],
+  "accelerator_model": "Removed from the fixed HOL source oracle; all external calls are terminal failures as in init-e sourceOracle.",
+  "flapjack_revision_unchanged": "034bb5a1ed0b757082768d5406206bd2f8e31b7c",
+  "formal_lean_decoder_step_correspondence": "outstanding",
+  "scope": "Pinned input and reference comparison; HOL compilation and independent verification are separate checks.",
+  "allocation_proposal": {
+    "entries": 814,
+    "sha256": "95a6356698af513a69c56ef6ce221101ff4374812b527ffa5c427861bb5465b7",
+    "origin": "Untrusted extracted reference compiler/allocator with the pinned software AST; the native and bitmap proposal bytes match the common reference. Hints are reordered by explicit source function IDs. HOL validation is required.",
+    "legacy_reference_note": "Current init-e still contains unused 826-entry AllocationOracles literals for the previous 825-function guest. These were rejected by HOL for the current 813-function guest and are not used."
+  },
+  "source_memory_alignment": "The total startup memory function follows init-e literally, including unaligned addresses within the 40-byte header range. The compiler memory relation is still restricted to ordinaryDomain."
+}

@@ -1,0 +1,119 @@
+Scanning [1m$(HOLDIR)/src/TeX[0m
+Scanning [1m$(HOLDIR)/src/bag[0m
+Scanning [1m$(HOLDIR)/src/sort[0m
+Scanning [1m$(HOLDIR)/src/string[0m
+Scanning [1m$(HOLDIR)/src/n-bit[0m
+Scanning [1m$(HOLDIR)/src/res_quan/src[0m
+Scanning [1m$(HOLDIR)/src/finite_maps[0m
+Scanning [1m$(HOLDIR)/examples/algorithms[0m
+Scanning [1m$(HOLDIR)/examples/algorithms/unification/triangular[0m
+Scanning [1m$(HOLDIR)/src/transfer[0m
+Scanning [1m$(HOLDIR)/src/transfer/examples[0m
+Scanning [1m$(HOLDIR)/examples/algorithms/unification/triangular/first-order[0m
+Scanning [1m$(HOLDIR)/examples/algorithms/unification/triangular/first-order/compilation[0m
+Scanning [1m$(HOLDIR)/src/integer[0m
+Scanning [1m$(HOLDIR)/src/pred_set/src/more_theories[0m
+Scanning [1m$(HOLDIR)/src/algebra/base[0m
+Scanning [1m$(HOLDIR)/src/algebra/construction[0m
+Scanning [1m$(HOLDIR)/src/algebra[0m
+Scanning [1m$(HOLDIR)/src/hol88[0m
+Scanning [1m$(HOLDIR)/src/rational[0m
+Scanning [1m$(HOLDIR)/src/real[0m
+Scanning [1m$(HOLDIR)/examples/data-structures/balanced_bst[0m
+Scanning [1m$(HOLDIR)/examples/formal-languages[0m
+Scanning [1m$(HOLDIR)/examples/formal-languages/context-free[0m
+Scanning [1m$(HOLDIR)/src/search[0m
+Scanning [1m$(HOLDIR)/examples/formal-languages/regular[0m
+Scanning [1m$(HOLDIR)/examples/machine-code/hoare-triple[0m
+Scanning [1m$(HOLDIR)/src/floating-point[0m
+Scanning [1m$(HOLDIR)/src/monad/more_monads[0m
+Scanning [1m$(HOLDIR)/src/update[0m
+Scanning [1m$(HOLDIR)/examples/l3-machine-code/common[0m
+Scanning [1m$(HOLDIR)/examples/l3-machine-code/lib[0m
+Scanning [1m$(HOLDIR)/examples/l3-machine-code/riscv/model[0m
+Scanning [1m$(HOLDIR)/examples/machine-code/decompiler[0m
+Scanning [1m$(HOLDIR)/examples/l3-machine-code[0m
+Scanning [1m$(HOLDIR)/examples/l3-machine-code/riscv/step[0m
+Scanning [1m$(HOLDIR)/examples/machine-code/multiword[0m
+Scanning [1m$(HOLDIR)/src/coalgebras[0m
+Scanning [1m$(HOLDIR)/examples/pl-semantics/lprefix_lub[0m
+Scanned 40 directories
+Building 39 theory files
+Starting work on initBaselinePaddingTheory
+initBaselinePaddingTheory                                 (176s)  [1/39]     OK
+Starting work on initBaselineRomTheory
+initBaselineRomTheory                                     (160s)  [2/39]     OK
+Starting work on initBaselineAdmissionTheory
+Starting work on initNativeInstalledTheory
+initNativeInstalledTheory                                  (84s)  [3/39]     OK
+Starting work on initBootWordBytesTheory
+initBaselineAdmissionTheory                                (91s)  [4/39]     OK
+Starting work on initBootstrapInstalledTheory
+initBootWordBytesTheory                                    (84s)  [5/39]     OK
+Starting work on initBaselineStartPcTheory
+initBootstrapInstalledTheory                               (89s)  [6/39]     OK
+Starting work on initBootstrapStepTheory
+initBaselineStartPcTheory                                  (88s)  [7/39]     OK
+Starting work on initBootstrapFfiTheory
+initBootstrapStepTheory                                    (87s)  [8/39]     OK
+Starting work on initBootstrapPrefixStepsTheory
+initBootstrapFfiTheory                                     (96s)  [9/39]     OK
+Starting work on initBootstrapChallengeStepTheory
+initBootstrapPrefixStepsTheory                             (91s) [10/39]     OK
+Starting work on initBootstrapExecutionTheory
+initBootstrapChallengeStepTheory                           (90s) [11/39]     OK
+Starting work on initBootstrapChallengePrefixTheory
+initBootstrapExecutionTheory                               (92s) [12/39]     OK
+Starting work on initBootstrapCopyStepsTheory
+initBootstrapChallengePrefixTheory                        (100s) [13/39]     OK
+Starting work on initBootstrapChallengeCopyStepsTheory
+initBootstrapCopyStepsTheory                               (96s) [14/39]     OK
+Starting work on initBootstrapCopyExecutionTheory
+initBootstrapCopyExecutionTheory                           (91s) [15/39]     OK
+Starting work on initBootstrapSuffixStepsTheory
+initBootstrapChallengeCopyStepsTheory                     (109s) [16/39]     OK
+Starting work on initBootstrapChallengeCopyExecutionTheory
+initBootstrapChallengeCopyExecutionTheory                 (100s) [17/39]     OK
+Starting work on initBootstrapChallengeSuffixStepsTheory
+initBootstrapSuffixStepsTheory                            (617s) [18/39]     OK
+Starting work on initBootstrapFullExecutionTheory
+initBootstrapFullExecutionTheory                           (96s) [19/39]     OK
+Starting work on initBaselineInitialTheory
+initBootstrapChallengeSuffixStepsTheory                   (630s) [20/39]     OK
+Starting work on initBaselineMmioLayoutTheory
+initBaselineInitialTheory                                  (94s) [21/39]     OK
+Starting work on initBaselineSourceMemoryTheory
+initBaselineMmioLayoutTheory                               (91s) [22/39]     OK
+Starting work on initBaselineConfiguredTheory
+initBaselineSourceMemoryTheory                             (98s) [23/39]     OK
+Starting work on initBaselinePackedMemoryTheory
+initBaselineConfiguredTheory                               (93s) [24/39]     OK
+Starting work on initBaselineDataDomainTheory
+initBaselinePackedMemoryTheory                             (96s) [25/39]     OK
+Starting work on initBaselineBitmapBytesTheory
+initBaselineDataDomainTheory                               (98s) [26/39]     OK
+Starting work on initBaselineCodeMemoryTheory
+initBaselineBitmapBytesTheory                              (97s) [27/39]     OK
+Starting work on initBaselineBitmapWordsTheory
+initBaselineCodeMemoryTheory                               (97s) [28/39]     OK
+Starting work on initBaselineGoodInitTheory
+initBaselineBitmapWordsTheory                             (101s) [29/39]     OK
+Starting work on initBaselineMemoryHeadersTheory
+initBaselineGoodInitTheory                                (108s) [30/39]     OK
+Starting work on initBaselineBitmapInstalledTheory
+initBaselineMemoryHeadersTheory                            (98s) [31/39]     OK
+Starting work on initBootstrapChallengeTraceTheory
+initBaselineBitmapInstalledTheory                         (104s) [32/39]     OK
+Starting work on initBaselineInstalledTheory
+initBootstrapChallengeTraceTheory                          (98s) [33/39]     OK
+Starting work on initBaselineRestrictedExecutionTheory
+initBaselineInstalledTheory                               (124s) [34/39]     OK
+Starting work on initBaselineLimitsTheory
+initBaselineRestrictedExecutionTheory                     (105s) [35/39]     OK
+Starting work on initBaselineChallengeExecutionTheory
+initBaselineChallengeExecutionTheory                      (104s) [36/39]     OK
+initBaselineLimitsTheory                                  (142s) [37/39]     OK
+Starting work on initBaselineRefinementTheory
+initBaselineRefinementTheory                              (142s) [38/39]     OK
+Starting work on initBaselineCertificateTheory
+initBaselineCertificateTheory                             (139s) [39/39]     OK

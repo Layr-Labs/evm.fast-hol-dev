@@ -23,7 +23,7 @@ Theorem baseline_installation_headers:
   baselinePackedMemory input (n2w sourceBase+24w) =
     wordLang$Word (n2w baselineNativePc+n2w (LENGTH compiledBytes)) /\
   baselinePackedMemory input (n2w sourceBase+32w) =
-    wordLang$Word (n2w baselineNativePc+n2w 620+n2w (LENGTH compiledBytes))
+    wordLang$Word (n2w baselineNativePc+n2w 3788+n2w (LENGTH compiledBytes))
 Proof
   mp_tac baseline_packed_headers >>
   CONV_TAC (LAND_CONV (TOP_DEPTH_CONV (numLib.BOUNDED_FORALL_CONV ALL_CONV))) >>

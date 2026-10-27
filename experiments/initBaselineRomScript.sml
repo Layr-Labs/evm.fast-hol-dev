@@ -26,11 +26,11 @@ fun save_closed name th = if null (hyp th) then save_thm (name,check_thm th)
 val _ = save_closed "initial_data_length"
   (EQT_ELIM (cv_eval ``LENGTH baselineInitData = bootDataEnd - bootDataRam``));
 val _ = save_closed "baseline_rom_length"
-  (EQT_ELIM (cv_eval ``LENGTH baselineRom = 950344``));
+  (EQT_ELIM (cv_eval ``LENGTH baselineRom = 1028080``));
 val _ = save_closed "native_fits_before_fixed_buffer"
-  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes <= 0x800ddd94``));
+  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes <= 0x800f0134``));
 val _ = save_closed "native_ends_at_fixed_buffer"
-  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes = 0x800ddd94``));
+  (EQT_ELIM (cv_eval ``baselineNativePc + LENGTH compiledBytes = 0x800f0134``));
 val _ = save_closed "native_image_in_rom"
   (EQT_ELIM (cv_eval ``TAKE (LENGTH compiledBytes)
     (DROP (baselineNativePc-initialPc) baselineRom) = compiledBytes``));

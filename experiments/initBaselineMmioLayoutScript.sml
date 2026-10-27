@@ -15,7 +15,7 @@ Definition baselineCompilerMmioLayout_def:
       MAP (\r:lab_to_target$shmem_info_num.
         (r.nbytes,Addr r.addr_reg r.addr_off,r.reg,n2w r.exit_pc+n2w baselineNativePc))
         compiledMmio) /\
-   620 + LENGTH compiledBytes + lab_to_target$ffi_offset*(compiledFirst+3) < dimword (:64))
+   3788 + LENGTH compiledBytes + lab_to_target$ffi_offset*(compiledFirst+3) < dimword (:64))
 End
 val layout_def = SIMP_RULE (srw_ss())
   [compilerMachineConfig_def,submissionConfig_def,baselineSubmission_def,

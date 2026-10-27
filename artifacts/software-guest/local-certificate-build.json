@@ -1,0 +1,40 @@
+{
+  "scope": "Fresh full local standard-HOL Certificate build after pruning unused padding CV translations; independent public verifier pending",
+  "status": "passed",
+  "build_result": {
+    "status": "passed",
+    "finished": "2026-10-25T21:20:00.347006+00:00",
+    "exit": 0,
+    "timed_out": false,
+    "command": [
+      "/usr/bin/python3",
+      "tools/build.py",
+      "--hol",
+      "/home/zksecurity/cv_compute/HOL-init-e",
+      "--jobs",
+      "2",
+      "--maxheap-mib",
+      "24576",
+      "initBaselineCertificateTheory.uo",
+      "initProofLibraryTheory.uo",
+      "replayChecksTheory.uo",
+      "initCompiledMetadataTheory.uo"
+    ],
+    "elapsed_seconds": 3125.6,
+    "resource_evidence": {
+      "file": "verification-logs/local-certificate-build.resources.txt",
+      "max_resident_set_kib": 23975684,
+      "swaps": 0,
+      "exit_status": 0
+    },
+    "finished_source": "build log modification time"
+  },
+  "saved_certificate_theorem": true,
+  "log_bytes": 7000,
+  "source_commit": "c2633c8b7c5f6ca966b1ad9244e8ede5f350271b",
+  "padding_script_sha256": "c4a1f1e6ccaa3a57c13c23dfaa2d51d5851ebd336094e8c4c33cd48301e32a6e",
+  "rom_sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b",
+  "trusted_manifest_sha256": "b7b1580d6a56780e19c86e6a534259d44fc629337ed036d22fd1d0a82b87a94f",
+  "certificate_log_sha256": "53dda66f131da8843fd40b781bff50cd70ef80d338d141cf8e80d47cafb01c3f",
+  "certificate_log": "verification-logs/local-certificate-build.log"
+}

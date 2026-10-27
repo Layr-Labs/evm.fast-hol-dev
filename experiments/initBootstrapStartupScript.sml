@@ -28,19 +28,19 @@ Proof
     bootDataRom_def,bootDataRam_def,bootDataEnd_def]) >> EVAL_TAC
 QED
 Definition bootCopyState_def:
-  bootCopyState s = copyIterations 4617 (bootRun bootstrapPrefix s)
+  bootCopyState s = copyIterations 4606 (bootRun bootstrapPrefix s)
 End
 Theorem bootstrap_copy_effect:
   s.pc = n2w initialPc /\ ~s.be /\ ~s.failed /\
-  (!i. i < 36936 ==>
+  (!i. i < 36848 ==>
     n2w (bootDataRom+i) IN s.mem_domain /\
     n2w (bootDataRam+i) IN s.mem_domain) ==>
   (bootCopyState s).pc = 0x8000002cw /\
   ~(bootCopyState s).failed /\
-  (!i. i < 36936 ==>
+  (!i. i < 36848 ==>
     (bootCopyState s).mem (n2w (bootDataRam+i)) =
     s.mem (n2w (bootDataRom+i))) /\
-  (!x. (!i. i < 36936 ==> x <> n2w (bootDataRam+i)) ==>
+  (!x. (!i. i < 36848 ==> x <> n2w (bootDataRam+i)) ==>
     (bootCopyState s).mem x = s.mem x)
 Proof
   strip_tac >> imp_res_tac bootstrap_startup_effect >>

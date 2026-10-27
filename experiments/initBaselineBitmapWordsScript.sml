@@ -17,7 +17,7 @@ Proof
       (n2w (bootDataRam+24+8*i)+n2w j) =
     EL (8*(3+i)+j) baselineInitData` by
     (rpt strip_tac >>
-     `24 <= 24+8*i+j /\ 24+8*i+j < 36936` by fs [compiled_bitmap_count] >>
+     `24 <= 24+8*i+j /\ 24+8*i+j < 36848` by fs [compiled_bitmap_count] >>
      mp_tac (Q.INST [`i` |-> `24+8*i+j`] baseline_final_bitmap_byte) >>
      fs [word_add_n2w,LEFT_ADD_DISTRIB,RIGHT_ADD_DISTRIB]) >>
   rewrite_tac [packedBootWord_def] >>

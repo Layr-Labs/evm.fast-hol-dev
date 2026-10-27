@@ -1643,3 +1643,23 @@ OpenTheory article required raising the bounded article input cap from2GiB to3Gi
 31 boundary tests and the real CLI negative replay passed. Reduced Lean decoder/step
 agreement remains unproved. The immediately preceding r20261012v verification
 record refers to another ROM and is historical.
+
+
+### Software guest public source-only verification accepted (2026-10-26)
+
+Fresh pipeline v6 passed the public source-only CLI with the exact 1,028,080-byte
+software guest ROM and Infinity score. The native image has 979,140 bytes and
+4,603 bitmap words, exactly matching the pinned original/Rocq references.
+The full build, export, binding, package and independent strict replay ran in
+a fresh workspace. Strict HOL returned 0 without signal or timeout and wrote
+exactly `VERIFIED\n`; replay took 13,127.742 seconds. The generated article is
+4,446,682,307 bytes, SHA-256
+`185db7655ddcb5e7c32f6b3894ab4a61a19566e4e7624144876918024ce57067`.
+The whole-ROM CV translation was retained and the generated-article cap raised
+to 8 GiB. The public run took 39,177 seconds and peaked at 94,629,628 KiB RSS.
+The 145-file source envelope is 3,045,749 bytes, zipped 693,478 bytes.
+
+All boundary/source-envelope/exporter, isolation, real CLI rejection and unrelated
+conclusion gates passed. Exact frozen-file/trusted-source hashes and process
+evidence are published in [the software guest verification record](../artifacts/software-guest/verification.json).
+Formal reduced Lean decoder/step agreement remains outstanding.

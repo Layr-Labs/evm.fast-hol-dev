@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "scope": "Rebuilt standard-HOL bootstrap/source memory relation; full Certificate and independent verifier pending",
+  "theorem": "initBaselineSourceMemory.baseline_source_memory",
+  "reference_memory": "Exact original total startup-memory function, including unaligned header addresses",
+  "proof_change": "Split on the byte-offset range, derive the header index bound, and normalize the bootstrap theorem address with word_add_n2w. No change to the fixed source definition or certificate premises.",
+  "source_hashes": {
+    "challenge/initSourceScript.sml": "1ec56077fb25183c1537fd36f7d5f99297f184daafcbfd4c9560ca96d2c2bce1",
+    "experiments/initBaselineSourceMemoryScript.sml": "f2bf3f26a3210d5c1bc214b9b27cf93dc18c21e3015dfeff444829370167c7bb"
+  }
+}

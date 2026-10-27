@@ -29,7 +29,7 @@ Theorem copy_preserves_low_memory:
 Proof
   strip_tac >> simp [bootCopyState_def] >>
   imp_res_tac bootstrap_startup_effect >>
-  `(copyIterations 4617 (bootRun bootstrapPrefix s)).mem x =
+  `(copyIterations 4606 (bootRun bootstrapPrefix s)).mem x =
    (bootRun bootstrapPrefix s).mem x` by
     (irule baseline_copy_outside >> fs [] >>
      rw [bootDataRam_def] >> strip_tac >>

@@ -12,17 +12,20 @@ p.add_argument('--hol', type=Path, default=Path(os.environ.get('HOLDIR', ROOT.pa
 p.add_argument('-j', '--jobs', type=int, default=3)
 p.add_argument('--maxheap-mib', type=int, default=24576, help='Poly/ML heap limit per HOL worker')
 p.add_argument('--build-dir', type=Path, help='isolated output directory for a different HOL toolchain')
+p.add_argument('--experiments-dir', type=Path, default=ROOT/'experiments',
+               help='proof-source directory (used by source-submission verification)')
 p.add_argument('targets', nargs='*', default=['initParamsTheory.uo', 'initGuestTheory.uo',
                                          'initSimplifyTheory.uo', 'initTargetTheory.uo',
                                          'initGasTheory.uo', 'initObservationsTheory.uo',
                                          'initHostTheory.uo', 'initSourceTheory.uo',
                                          'initStructsTheory.uo', 'initGlobalsTheory.uo',
-                                         'initChallengeTheory.uo', 'initAccelChecksTheory.uo',
+                                         'initChallengeTheory.uo',
                                          'replayChecksTheory.uo', 'certificateReplayLib.uo'])
 a = p.parse_args()
 if a.jobs < 1 or a.jobs > 3 or a.maxheap_mib < 1:
     p.error('use 1 to 3 workers and a positive heap limit')
 hol = a.hol.resolve()
+experiments = a.experiments_dir.resolve()
 if not (hol/'bin/Holmake').is_file():
     p.error('build HOL4 first, then set --hol or HOLDIR')
 if not (ROOT/'cakeml/pancake/panLangScript.sml').is_file():
@@ -37,7 +40,7 @@ stamp = build/'hol-path.txt'
 if stamp.exists() and stamp.read_text() != str(hol):
     p.error('this .build belongs to another HOL checkout; remove .build before switching')
 stamp.write_text(str(hol))
-directories = [ROOT/'challenge', ROOT/'experiments', ROOT/'verifier'] + [ROOT/'cakeml'/x for x in [
+directories = [ROOT/'challenge', experiments, ROOT/'verifier'] + [ROOT/'cakeml'/x for x in [
     'misc', 'basis/pure', 'compiler/encoders/asm', 'compiler/backend', 'semantics', 'semantics/ffi', 'pancake', 'cv_translator',
     'compiler/backend/cv_compute', 'compiler/backend/reg_alloc', 'compiler/backend/pattern_matching', 'compiler/inference', 'compiler/inference/proofs',
     'compiler/parsing', 'compiler/printing', 'semantics/proofs',

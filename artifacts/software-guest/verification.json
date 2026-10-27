@@ -1,0 +1,217 @@
+{
+  "status": "verified",
+  "verifier_exit": 0,
+  "accepted_at_utc": "2026-10-26T20:13:45.333128+00:00",
+  "verification_date": "2026-10-26",
+  "release_tag": "r20261026-verifier-passed",
+  "route": "public source-only verifier, uninterrupted fresh author build/export/bind/package and independent strict kernel replay",
+  "source_base_commit": "c2633c8b7c5f6ca966b1ad9244e8ede5f350271b",
+  "source_binding": "Exact source hashes are in source-submission-manifest.json; fixed files are in trusted_file_sha256 below.",
+  "result": {
+    "status": "verified",
+    "verifier_exit": 0,
+    "rom_bytes": 1028080,
+    "certificate_bytes": 4446682307,
+    "source_bytes": 2017652,
+    "score": "infinity",
+    "work": "/var/tmp/hol-software-public-verification-v6/source-run"
+  },
+  "strict_kernel_process": {
+    "returncode": 0,
+    "signal": null,
+    "signal_number": null,
+    "timed_out": false,
+    "wall_seconds": 13127.742139599053
+  },
+  "completion_marker": "VERIFIED\n",
+  "completion_marker_hex": "56455249464945440a",
+  "rom": {
+    "bytes": 1028080,
+    "sha256": "44b6a6b828293a54cf2e8698a6a0af6a0d08b4ea825f6504547996c31969d04b"
+  },
+  "certificate": {
+    "bytes": 4446682307,
+    "sha256": "185db7655ddcb5e7c32f6b3894ab4a61a19566e4e7624144876918024ce57067",
+    "generated_and_frozen_hashes_equal": true,
+    "whole_rom_cv_translation_retained": true
+  },
+  "submission": {
+    "files": 145,
+    "bytes": 3045749,
+    "zip_deflate9_bytes": 693478,
+    "proof_source_bytes": 2017652,
+    "manifest": "source-submission-manifest.json"
+  },
+  "resources": {
+    "public_elapsed_seconds": 39177,
+    "strict_replay_wall_seconds": 13127.742139599053,
+    "max_resident_set_kib": 94629628,
+    "public_exit_status": 0,
+    "author_address_space_gib": 64,
+    "author_build_bind_heap_gib": 24,
+    "author_export_heap_gib": 40,
+    "strict_address_space_gib": 112,
+    "strict_heap_gib": 84,
+    "article_limit_gib": 8,
+    "source_stage_timeout_seconds": 28800,
+    "strict_timeout_seconds": 21600
+  },
+  "operator_heap": {
+    "hol": "/home/zksecurity/cv_compute/HOL-init-e",
+    "hol_revision": "7f769972f0acf26df39facd83339c05a66d9ff26",
+    "heap_sha256": "89eacdbed4a58a53de820ef57a7551b1b763dc9462a420facb0d0a152c55d865",
+    "manifest_sha256": "a48c8b9281a12e70d171c4d7bb3b1c4a6426b210359a9387af354a1e4041e470"
+  },
+  "trusted_file_sha256": {
+    ".gitmodules": "387979a13a780ed59b6cfe2be2327b688d4d121d514d2439b4ddfe5e0624a04c",
+    "challenge/initChallengeScript.sml": "6d70d19fbe4833a3c9e74e7b9d02b84040ab03cf8269d3b4f249d6e69e36ca61",
+    "challenge/initGasScript.sml": "5cd499a9f14cab0bcebd4fde00c5fbe60a3a2c58d2d3f534336ab548bd53ad51",
+    "challenge/initGuestScript.sml": "be19b0b0f83dba8bc4381b7158a03882c3f07feafadf91c931350aa510ad3a44",
+    "challenge/initHostScript.sml": "49aa43aef8d5bea01ef1fb7417ecd2e9a81cb99e452cb4ec0b9ca82f861ca206",
+    "challenge/initMachineScript.sml": "4ac17807fe095504646540344b21d254d11543355eda22b4ed0fd63817bed318",
+    "challenge/initObservationsScript.sml": "e58bd6336ec6d5810a4853cac5837902d9fc50602fe217eadb0c6292577be9c2",
+    "challenge/initParamsScript.sml": "d571320b35e841d6031914dff68ac672fb8a17c43791df776398899f7105451e",
+    "challenge/initProofLibraryScript.sml": "9e0e6f2f37db9bb1d34c62e023fa7756f0eeafe7e0a2fead2bbe38e11bf98ef5",
+    "challenge/initSourceScript.sml": "1ec56077fb25183c1537fd36f7d5f99297f184daafcbfd4c9560ca96d2c2bce1",
+    "challenge/initSubmissionScript.sml": "27770b2af078f5da65e6c6bbbe19cd4fe523304f79802a4a5244fca7a0f59262",
+    "challenge/initTargetScript.sml": "1e3748cd24bd6e1e6bd4b340a0b744fb88152f154506300ac09b9dfedd663c6b",
+    "experiments/backendRiscvCvScript.sml": "361588a8f9b8caf9e6fa748d24b2fa170bcb42a6c400a9ba994cbd57d31d2713",
+    "experiments/crepNoInlineScript.sml": "8f7f4644cd1925b8fb532211470c61078e7220a52f2a014cf91d50711a840b3c",
+    "experiments/cvInterSizeScript.sml": "98ed566712653c2ece42b6c1bbfdba564f176ce00fc416c097f52e1f7c06b60c",
+    "experiments/decoderStaticHintScript.sml": "2ad5ea2b743bcfc8df7252bb9742de0f77102dff798bcd20d678c28acbe3cf69",
+    "experiments/decoderTreeHintScript.sml": "ae3536b543091fb1a1f07dd5477571a74e6403d35e758e2324fdcbcdb8fa2048",
+    "experiments/initBootstrapMemoryScript.sml": "0795b3cfe9d1455ef2454e78c739f476e64792030b46a4dab77e9d895c598134",
+    "experiments/initBootstrapStoresScript.sml": "8948411cad6f9aeb25713fc13565bd9fb48596e91a2a50498c549f9ac1c0178f",
+    "experiments/initChallengeClockScript.sml": "d8342df0fe1d58bcb5b63e11081e117b81dbaed2733bd426de8111125b4f148f",
+    "experiments/initChallengeCompileScript.sml": "286f8834710c893c19e45a80957b4ac0817c3077df4f76b7f31f5bc26416f926",
+    "experiments/initChallengeConfigScript.sml": "30bd856e06892fba86c53d0a46f9f4896110ec979598e7aeceb8bed1be7e4897",
+    "experiments/initChallengeLabCompilerScript.sml": "e1c86a409ed7c010f49a65ca1bde6a184d23e5e8ab7e837c7706d1975a64a3d6",
+    "experiments/initChallengeNopScript.sml": "584ee51fc00c26568f424dec35c84afaffad05596b09bf30903709a2783ea3c9",
+    "experiments/initChallengePancakeScript.sml": "3db0499eb6b67f8fbacc9946b1a0f65373400ec7981d138bc9b308496af72585",
+    "experiments/initChallengeSemanticsScript.sml": "932a30ed84c22a03f1bc99a248451fbd74c869cf975dab05e033f455493c63ad",
+    "experiments/initChallengeStepScript.sml": "d630c3012845f7183f87b8ac8a18e1ba94001941a53228be6c19d344de8353e9",
+    "experiments/initChallengeTotalScript.sml": "e7d6a70130991602ab16d0c2a003173efed8ebe7eefb7a7d573d212daa5e5c05",
+    "experiments/initCodeMemoryScript.sml": "f761df2e3627a01f2220e2d07d88ca4ce5d78cde23e38aa950350eac45ea1828",
+    "experiments/initCompilerMachineScript.sml": "8e603a98256cb302786bfb02d90ab78ea1c737092fc3eb621f156cfb940f7c1d",
+    "experiments/initEncoderExecutionScript.sml": "71381cce99285deb7cf8ac87270c65e3e4631d1d5ea85c038af7e87df68c3400",
+    "experiments/initFfiBoundaryScript.sml": "c809ba6f7dedff7682b1d6cf6f26c702d539820e3a2ee5a51181c808787565f3",
+    "experiments/initFfiInstallationScript.sml": "c70236e1b57bb71a3be646316271fa6732ed1dc3e0e3c5a4819a20d50465feb6",
+    "experiments/initInitialCodeScript.sml": "015590844d25635d35fb9fd88eb786bcfcf58c92fb33aaa60adecf1df4dcb6d9",
+    "experiments/initLabInitialStateScript.sml": "72b4bf37741b0e2f8789f70ab7b4c9e959928893d0b0f56df85166b487eeee14",
+    "experiments/initLabSimulationHelpersScript.sml": "905b05f19fc56fefd07019c249e8be07df2f073faa98ddac1bf56b0deabb055e",
+    "experiments/initMachineReturnScript.sml": "18bc2b514ad922f9da80211ceb3b237af5f8d1bb641d84e83440c7fa1242a2b4",
+    "experiments/initRestrictedEncoderScript.sml": "aad169fba8bb55813b2369a20e69bf280ee8ea0470b2a9a343de1de24ac39d66",
+    "experiments/initRestrictedRulesScript.sml": "ab98c165aef822fa24de34468392ec453070342888a6b43e88e9c654a3e976bd",
+    "experiments/initRestrictedStepScript.sml": "11b9d0c10150b64cdb2c71fc5c45ae04afee6466c2ef66b86a74cdb02969247b",
+    "experiments/initRestrictedTargetScript.sml": "0226aeebfcb470bfa40165235bbbefde09a983e88638479b4ea4226c823af770",
+    "experiments/initStackRankScript.sml": "3b7a42865ce402af71b25f11d4387a2f0e892c258caebdf7b90df3c82df12330",
+    "experiments/initWordListMemoryScript.sml": "fcbda13d99c02267720dee5045f6ebeaf2d77617dc6e89600ff20f73c5644c4b",
+    "experiments/loopPreludeCvScript.sml": "6e3877017d91fa2fda0787b0639a047d3b31a5a531a6c8369d576368cdc3c00d",
+    "experiments/mlmapCvScript.sml": "4c9eda6935781b6b408c55b42e9363b53a583c243f271d91d4905fbc89979b5b",
+    "experiments/numSortCvScript.sml": "b6c3bf00310b16992f77a735f3227440ea43209f3653966675e5ab2fb721e174",
+    "experiments/panCrepCvScript.sml": "557832e78a06f185cb0b1c9a4295c80b3a9e6473137933c3acd64d665ffc7c34",
+    "experiments/panCrepExpCvScript.sml": "91cac603f6a72942b5235a4b24f9b5c705df6b6126b05a6acc8d5252f363ddea",
+    "experiments/panGlobalsCvScript.sml": "7f2ecd72e1c580429f63cf9d38f4c6a395c3b64973dacb2ca211c1213a6a83ed",
+    "experiments/panLoopCvScript.sml": "6c08156d6dd5bef7bb9afc4e627cd0239bd54a8b4d81fefb4525c2bda8e29b97",
+    "experiments/panMainOrderScript.sml": "74d286df572cb9623b5c6bc92680f725c4480eed6290fbd163851c35d1d274ee",
+    "experiments/panSimplifyCvScript.sml": "2920975414a48868585636bf094ed5bd33334625eeccce2006b8d29e386dbefb",
+    "experiments/panStructsCvScript.sml": "4b0672dd4a6bebaba24dcaf01f181a7b489ffd2381d40d6cc2d053b2535cc077",
+    "experiments/panStructsTopCvScript.sml": "4d246f8b6764316d0df64084ba904828cf00d6135f3da4b3264952b2fa0bf652",
+    "experiments/panWordCvScript.sml": "caf4cbebcfc629a0a1714bc465782520aeab69bf37de8fa95a622f0d6019f975",
+    "experiments/pancakeBackendBridgeScript.sml": "99bd60c3776928b86833b9ca8d695beace4544a409aafc23db64c2f718f78654",
+    "experiments/pancakeCorrectnessBridgeScript.sml": "2345e6d6c0df1c83b9dde6acdcd999ef5852658b6f5a9119af9b8ad33de4974a",
+    "experiments/recordLiteralLib.sml": "f182014852fa926b8481ad441da3dabf490c6780eaabdf9bb3b88e02c18918bb",
+    "experiments/restrictedStepLoaderLib.sig": "f713bf283acefe7a545d7beb1f593ec6abdbbfb7ae0fad978d16fdf1c01c2958",
+    "experiments/restrictedStepLoaderLib.sml": "b6f3ab59ed71fa5a23db6c075cc575212475bed4bd758008882d1f3e757f8d85",
+    "experiments/riscvBackendDefsScript.sml": "39141693970bc64312a60426bccfe4551e772dd47bd37c25cf80e4f11586e3c5",
+    "experiments/riscvEncodeCvScript.sml": "b84c53ef45a934f6c8f14180e0b7c3e5201b1f44d0c85f335529d57d2aef5d80",
+    "experiments/riscvTargetCvScript.sml": "86b0502ee650f52c6af3ba36b8ef1a7b5df6e85a6454c49d9ba23fc151b17469",
+    "provenance.json": "ca6a4e903d13ac368b4ee72278ee7eb4ec8266f8bcb90a04a54f2b763bafc543",
+    "source/guest.pp.pnk": "2cc9024d6979d623c503521b219123bc5f63cd69504bea97b93b3aad62e5360c",
+    "source/instruction-subset.json": "e467e21324984f38ce71af1fc3a35acf16170dca02c7e464736411fddef4bed8",
+    "source/software-update-reference.json": "03d69a7a6d01dd13c39c0a71c833c4968443a330acfdf67040deda13015ff43a",
+    "tools/bind_baseline.py": "215a2a4b4d2b38e91be83314ceb9923977a274507211a36569b010a30547256d",
+    "tools/bind_baseline.sml": "e395947ba7adc5c5277efd7cc7996d4eed2396f43de723094ca5044b305fb0cc",
+    "tools/build.py": "8b236c50cd83260a85d95ce7b99ff404169ff0d1d8dfe6998ccf3a234dbe3882",
+    "tools/export_baseline.py": "08356d2ca940b84472620a65e97fd02b8d2b34a69aa55441afa9c18b95b2154c",
+    "tools/import_ast.py": "0041df4d4643c4e224616635311045a3d174b3172f0e664c481f0500594a1c85",
+    "tools/package_baseline.py": "0aec3eb51413ef258f05760de0c033f42bb8e7f0945d54d29f8dbe5b083dc004",
+    "tools/prepare_verifier.py": "683fc519f806444b3909f46fa023c59a7900f8e207800ed2cd1bd1ec3110fab2",
+    "verifier/articleReaderLib.sml": "610b0cdd401b8ddab1befc1adb336eef133d4ae0393bf36cb2d0d1bd4380664c",
+    "verifier/certificateReplayLib.sml": "77096ff17aaa5a2478af7ae6363c5b98ecc526ab7a111de2a7d74ad8c01e92f9",
+    "verifier/check.sml": "d109bdefcc3f876886351f1b99161eb9a0f939059590c810fca67eceef7a8bc2",
+    "verifier/literalDecodeLib.sml": "1b26f50fd1f680a1bb6d51bf4791e082ca3ea4479e91953aa4bf24c97d23c55e",
+    "verifier/prepareHeap.sml": "19f21ff5c48838f436b92a1f6aa3c9bb991447baa28a602d72b3f530643bb039",
+    "verifier/strictReplayLib.sml": "84e03a31f4bbe2a843f86855e09126c7403a8e4a5efb8e3ebb438d1604381d9b",
+    "verifier/verify.py": "c9662496b30b1ab5a40b5a54f170a526ff3b0c1312edaec5212e94d551b25407",
+    "verifier/verify_source.py": "6c1b51fbbde21480cb2cda4d2575e4d10513a83cde10701ef12b9c88151f9232"
+  },
+  "preflight_gates": {
+    "boundary_tests": 31,
+    "source_envelope_tests": 9,
+    "export_driver_tests": 1,
+    "isolation": "passed",
+    "article_only_cli_rejection": "passed",
+    "unrelated_kernel_conclusion_rejection": "passed"
+  },
+  "logs": {
+    "public-verifier.log": {
+      "bytes": 539,
+      "sha256": "1fc9cc31c3aaa942b1371c352d1ba17a9eb28cfd3de99fa8f2e7052f4de66489"
+    },
+    "resources.txt": {
+      "bytes": 1084,
+      "sha256": "641c9bef8e9cc231323b534703c23ff4018cf25d5eae7923d847ff39371fb938"
+    },
+    "preflight.json": {
+      "bytes": 500,
+      "sha256": "8ee63333e7d5a246a12a1d9154c10ed9ae73664997ac0fb4f71c9a5564ceaf20"
+    },
+    "replay-process.json": {
+      "bytes": 125,
+      "sha256": "29b1f452e17c63c5fc44e4e31591e643e4ccff34a1e285139bada2ff4b3263e6"
+    },
+    "replay.log": {
+      "bytes": 494,
+      "sha256": "c8854fdfcd28a65404ab42b5bc3a936aed49f9554e7bbed9fb3cbb2097984d8d"
+    },
+    "pipeline.log": {
+      "bytes": 1967,
+      "sha256": "fa0b6062e8a446c521958cba8e2716033db90497ebd78673aa717dadd79ff95d"
+    },
+    "boundary-tests.log": {
+      "bytes": 130,
+      "sha256": "8ebba21bbc39b6036bcaecf66d5d4e1b2348996247c1f7d98ab98e6f05d436d8"
+    },
+    "source-envelope-tests.log": {
+      "bytes": 107,
+      "sha256": "5f0635b83af38a6c5d516fcb60dc3fa63c9c6ca4854e51a6a29ca33c92ccef16"
+    },
+    "export-driver-tests.log": {
+      "bytes": 98,
+      "sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5"
+    },
+    "isolation.log": {
+      "bytes": 75,
+      "sha256": "4e8645052ef075ce2c92b768ac2c44d4b3b6a0bfd16cd7437a54e7d46b42e010"
+    },
+    "cli-negative.log": {
+      "bytes": 73,
+      "sha256": "e4f4dccc111239aa83010741a11a308822a136cb4e51615701b8faabdb1f5233"
+    },
+    "kernel-negative.log": {
+      "bytes": 91,
+      "sha256": "f2f29cdceeb142d50f5baabc5e8e52287c9b38f7b75d5e021006adcc93115e95"
+    },
+    "local-certificate-build.log": {
+      "bytes": 7000,
+      "sha256": "53dda66f131da8843fd40b781bff50cd70ef80d338d141cf8e80d47cafb01c3f"
+    },
+    "local-certificate-build.resources.txt": {
+      "bytes": 989,
+      "sha256": "912c70ba7bbd7203a743bb7f6088c51554286723a921899898403682f8cabbf0"
+    }
+  },
+  "formal_reduced_lean_decoder_step_agreement": "outstanding",
+  "reference_comparison": "../../source/software-update-reference.json"
+}

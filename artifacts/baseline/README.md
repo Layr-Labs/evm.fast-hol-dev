@@ -1,4 +1,7 @@
-# Baseline ROM — Certificate proved in HOL
+# Historical baseline ROM — Certificate proved in HOL
+
+This directory preserves the previous guest and ROM. Current accepted software-guest
+artifacts and evidence are in [../software-guest/](../software-guest/README.md).
 
 The 950,344-byte ROM combines the 208-byte bootstrap, padding to native entry
 `0x80001190`, the checked 904,196-byte native compiler output, and initialization
@@ -23,7 +26,7 @@ The full Python verifier accepted the replayable article package with exit 0
 and `status: verified`. The [verification record](verification.json) includes the
 frozen ROM/proof hashes and Infinity score. The exact original-ROM-match run took 8,973 seconds and peaked at about
 90.4 GiB child RSS, using `--timeout 21600 --memory-gib 112`. The proof article
-is about 2.80 GB; the verifier accepts articles up to 3 GiB. ZIP and zstd
+is about 2.80 GB; the current verifier accepts articles up to 8 GiB. ZIP and zstd
 compression reduce it to about 98 MB.
 
 This directory remains an artifact archive, not the three-file submission
@@ -40,3 +43,10 @@ python3 tools/build.py --hol /path/to/tested/HOL initBaselineCertificateTheory
 The construction target is `initBaselineRomTheory`. Exported files are named
 `bootstrap.bin` and `baseline-rom.bin` in the build directory. Integrity hashes
 are in `manifest.json`; these hashes are external checks, not HOL theorems.
+
+The source-only protocol also generated a fresh package whose exact Certificate
+passed full independent replay on 2026-10-25 (Europe/Berlin), in 9,415.6 seconds.
+The [source verification record](source-submission-verification.json) records
+all 146 submitted file hashes and the resumed export/replay stages. The source
+bundle is 2,832,136 bytes, or 655,407 bytes with ZIP DEFLATE level 9. The large
+article is generated internally and is not uploaded by participants.
