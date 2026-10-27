@@ -20,7 +20,7 @@
       ],
       "scorePath": "scripts/score.json",
       "exactScores": true,
-      "hardware": "Official runs: blacksmith-32vcpu-ubuntu-2404 (128 GB RAM), directly on the runner; candidate proof scripts run only inside the verifier's Bubblewrap sandbox. Limits: 36,000 s and 64 GiB address space per author stage (build, export, bind, package), 21,600 s CPU and wall time and 112 GiB address space for strict replay, 75,600 s for the whole verifier. Upstream's accepted baseline run took 39,177 s (10 h 53 min) end to end, 13,128 s of it strict replay, with 90.25 GiB maximum RSS. Cold setup builds Poly/ML, two HOL4 trees and the baseline theories; official runs restore it from a cache saved on main.",
+      "hardware": "Official runs: blacksmith-32vcpu-ubuntu-2404 (128 GB RAM); proof sources run only in the verifier's Bubblewrap sandbox. Limits: 36,000 s and 64 GiB per author stage, 21,600 s and 112 GiB for strict replay, 75,600 s in total. Upstream's accepted baseline took 39,177 s end to end (13,128 s strict replay, 90.25 GiB max RSS). Cold setup took 7,853 s here; official runs restore it from a cache saved on main.",
       "runner": {
         "provider": "github-actions",
         "workflow": "benchmark.yml"
